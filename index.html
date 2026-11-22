@@ -1,0 +1,2049 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sequence Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style id="app-style">
+:root{
+  --bg:#C8102E; --on-bg:#FFFFFF; --surface:#FFFFFF; --ink:#111111; --muted:#5E5E5E; --line:#BDBDBD;
+  --accent:#C8102E; --accent-ink:#FFFFFF; --grey:#8A8A8A; --grey-soft:#E6E6E6;
+  --ok:#1E9E5A; --bad:#C8102E; --margin:#C8102E; --rule:#ECECEC; --sheet:#FFFFFF;
+  --bar:#111111; --bar-ink:#FFFFFF;
+  --piece-bg:#FFFFFF; --piece-ink:#111111;
+  --fs:34px;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#8E0B20; --surface:#1C1C1C; --ink:#F2F2F2; --muted:#B0B0B0; --line:#444444;
+    --grey:#6E6E6E; --grey-soft:#2A2A2A; --ok:#46C985; --bad:#FF5A5F; --margin:#E0243F;
+    --rule:#262626; --sheet:#141414; --bar:#000000;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#8E0B20; --surface:#1C1C1C; --ink:#F2F2F2; --muted:#B0B0B0; --line:#444444;
+  --grey:#6E6E6E; --grey-soft:#2A2A2A; --ok:#46C985; --bad:#FF5A5F; --margin:#E0243F;
+  --rule:#262626; --sheet:#141414; --bar:#000000;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font-family:"Atkinson Hyperlegible",Verdana,"Segoe UI",system-ui,sans-serif;font-size:18px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #FFFFFF;outline-offset:2px;box-shadow:0 0 0 6px #111}
+[hidden]{display:none!important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* top bar */
+.bar{display:flex;align-items:center;gap:16px;padding:10px clamp(12px,3vw,32px);background:var(--bar);color:var(--bar-ink);border-bottom:6px solid var(--grey);flex-wrap:wrap}
+.brand{font-weight:700;font-size:20px;margin-right:auto;display:flex;align-items:center;gap:10px}
+.brand-mark{display:inline-flex;gap:3px}
+.brand-mark i{width:10px;height:18px;border-radius:3px;background:var(--bar-ink);display:block}
+.brand-mark i:nth-child(2){height:12px;align-self:flex-end}
+.brand-mark i:nth-child(3){background:var(--accent)}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+.tab{border:0;background:transparent;padding:8px 14px;border-radius:8px;font-weight:700;color:#BDBDBD}
+.tab[aria-current="page"]{background:var(--accent);color:#fff}
+.tab:hover{color:#fff}
+
+main{padding:clamp(12px,2.5vw,28px) clamp(12px,3vw,32px) 40px;max-width:1800px;margin:0 auto}
+
+.btn{border:2px solid var(--ink);background:var(--surface);padding:9px 16px;border-radius:10px;font-weight:700;line-height:1.2}
+.btn:hover{background:var(--grey-soft)}
+.btn.primary{background:#111;border-color:#111;color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.quiet{border-color:var(--grey)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.danger{border-color:var(--bad);color:var(--bad)}
+
+/* PLAY */
+.play-head{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.play-title{color:var(--on-bg);margin:0;font-size:clamp(26px,3.2vw,48px);line-height:1.1}
+.tags{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.tag{font-size:16px;padding:3px 12px;border-radius:999px;background:#6E6E6E;color:#fff;font-weight:700}
+.tag:first-child{background:#111}
+.tag:last-child{background:#fff;color:#111}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.controls select{padding:9px 10px;border-radius:10px;border:2px solid var(--line);background:var(--surface);max-width:260px}
+.size{display:inline-flex;border:2px solid var(--line);border-radius:10px;overflow:hidden}
+.size button{border:0;background:var(--surface);padding:8px 12px;font-weight:700}
+.size button+button{border-left:2px solid var(--line)}
+
+.zone-label{font-size:18px;font-weight:700;color:var(--on-bg);margin:0 0 6px 4px}
+.zone{display:flex;flex-wrap:wrap;align-content:flex-start;gap:calc(var(--fs)*.4);padding:calc(var(--fs)*.5);border-radius:14px;touch-action:none;transition:box-shadow .15s}
+.sheet{position:relative;background-color:var(--sheet);
+  background-image:linear-gradient(90deg,transparent calc(var(--fs)*1.1 - 2px),var(--margin) calc(var(--fs)*1.1 - 2px),var(--margin) calc(var(--fs)*1.1),transparent calc(var(--fs)*1.1)),
+  repeating-linear-gradient(180deg,transparent 0,transparent calc(var(--fs)*2.45 - 2px),var(--rule) calc(var(--fs)*2.45 - 2px),var(--rule) calc(var(--fs)*2.45));
+  background-position:0 0, 0 calc(var(--fs)*.35);
+  padding-left:calc(var(--fs)*1.6);min-height:calc(var(--fs)*7.4);border:4px solid #111;box-shadow:10px 10px 0 #111}
+.zone.dragging{outline:4px dashed #fff;outline-offset:6px}
+.sheet-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:calc(var(--fs)*.7);pointer-events:none;text-align:center;padding:0 20px}
+
+.piece{font-size:var(--fs);line-height:1.2;padding:.32em .6em;background:var(--piece-bg);color:var(--piece-ink);
+  border:3px solid var(--piece-ink);border-radius:10px;box-shadow:0 4px 0 var(--piece-ink);user-select:none;-webkit-user-select:none;
+  cursor:grab;max-width:100%;touch-action:none;position:relative}
+.piece.lifted{opacity:.25}
+.piece.ok,.piece.bad{border-width:5px}
+.piece.ok{border-color:var(--ok);box-shadow:0 4px 0 var(--ok)}
+.piece.bad{border-color:var(--bad);box-shadow:0 4px 0 var(--bad)}
+.piece.ok::after,.piece.bad::after{position:absolute;right:-12px;top:-14px;width:30px;height:30px;border-radius:50%;color:#fff;font-size:20px;line-height:26px;text-align:center;font-weight:700;border:2px solid #fff}
+.piece.ok::after{content:"✓";background:var(--ok)}
+.piece.bad::after{content:"✗";background:var(--bad)}
+.ghost{position:fixed;z-index:50;pointer-events:none;box-shadow:0 14px 28px rgba(0,0,0,.28),0 4px 0 var(--piece-ink);transform:rotate(-1.5deg) scale(1.04);cursor:grabbing}
+.drop-mark{position:absolute;width:8px;border-radius:4px;background:#C8102E;pointer-events:none;z-index:5;box-shadow:0 0 0 2px #fff}
+
+.toolrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 14px}
+.toggle{display:inline-flex;align-items:center;gap:10px;border:3px solid #111;background:#fff;color:#111;padding:8px 14px;border-radius:12px;font-weight:700;font-size:18px}
+.toggle .knob{width:40px;height:22px;border-radius:999px;background:#8A8A8A;position:relative;flex:0 0 auto;transition:background .15s}
+.toggle .knob::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s}
+.toggle[aria-pressed="true"]{background:#111;color:#fff}
+.toggle[aria-pressed="true"] .knob{background:#C8102E}
+.toggle[aria-pressed="true"] .knob::after{left:21px}
+.hl-tools{display:inline-flex;gap:6px;align-items:center;background:#fff;border:3px solid #111;border-radius:12px;padding:5px 8px}
+.hl-sw{width:40px;height:34px;border-radius:8px;border:2px solid #111}
+.hl-sw[aria-pressed="true"]{outline:3px solid #111;outline-offset:2px}
+.hl-sw.eraser{background:#fff;font-weight:700;font-size:15px;width:auto;padding:0 10px;color:#111}
+.hl-clear{border:0;background:transparent;color:#111;font-weight:700;text-decoration:underline;padding:4px 8px}
+.w{border-radius:.14em;padding:0 .04em}
+.w.seq{font-weight:700;text-decoration:underline;text-decoration-thickness:.11em;text-underline-offset:.16em}
+.w.hl-yellow{background:#FFE14D;color:#111}
+.w.hl-green{background:#8EF0A8;color:#111}
+.w.hl-blue{background:#9CCBFF;color:#111}
+.w.hl-pink{background:#FFB3D1;color:#111}
+.hl-mode .piece{cursor:text}
+.hl-mode .w{cursor:pointer}
+.hl-mode .w:hover{outline:2px dashed currentColor;outline-offset:1px}
+.builder{display:flex;gap:22px;align-items:flex-start}
+.builder .bank-col{flex:1 1 0;min-width:0}
+.builder .roots{flex:2.1 1 0;min-width:0}
+@media (max-width:900px){.builder{flex-direction:column;align-items:stretch}}
+.bank-col{background:#fff;color:#111;border:4px solid #111;border-radius:14px;padding:12px 14px 16px;box-shadow:8px 8px 0 #111}
+.bank-col h3{margin:0 0 10px;font-size:max(20px,calc(var(--fs)*.6));letter-spacing:.02em}
+.abank{display:flex;flex-wrap:wrap;gap:12px;min-height:calc(var(--fs)*2.4);align-content:flex-start;touch-action:none;border-radius:10px;padding:4px}
+#bank-prefix{flex-direction:column;flex-wrap:nowrap;align-items:center}
+#bank-prefix .tile{width:max-content;max-width:100%}
+.abank .empty-note{color:#6E6E6E;font-size:18px;font-style:italic}
+.roots{display:flex;flex-direction:column;gap:18px}
+.rootcard{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#fff;border:4px solid #111;border-radius:14px;padding:12px;box-shadow:8px 8px 0 #111;flex-wrap:wrap}
+.rootcard.ok{border-color:var(--ok);box-shadow:8px 8px 0 var(--ok)}
+.buildrow{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;transition:gap .45s ease}
+.def{font-size:max(17px,calc(var(--fs)*.55));line-height:1.3;text-align:center;color:#111;max-width:36ch}
+.def::before{content:"Means: ";font-weight:700;color:#C8102E}
+.made .def{margin-top:2px}
+.family-root{grid-column:1/-1;text-align:center;background:#111;color:#fff;border-radius:14px;padding:10px 16px;font-size:max(20px,calc(var(--fs)*.7));font-weight:700}
+.family-root b{font-size:1.4em;color:#fff;border-bottom:4px solid #C8102E}
+.roots.two-col{display:grid;grid-template-columns:1fr 1fr}
+@media (max-width:1100px){.roots.two-col{grid-template-columns:1fr}}
+.plus{font-size:calc(var(--fs)*1.05);font-weight:700;color:#111;line-height:1;display:inline-block;max-width:2em;overflow:hidden;transition:opacity .35s ease,max-width .45s ease}
+.rootcard .root,.rootcard .tile,.rootcard .slot{transition:background-color .45s ease,color .45s ease,border-color .45s ease,box-shadow .45s ease,border-radius .45s ease,padding .45s ease,min-width .45s ease}
+.rootcard.joining .buildrow{gap:0}
+.rootcard.joining .plus{opacity:0;max-width:0}
+.rootcard.joining .slot{border-color:transparent;min-width:0;padding:0}
+.rootcard.joining .tile,.rootcard.joining .root{background:var(--piece-bg);color:var(--piece-ink);border-color:transparent;box-shadow:none;border-radius:0;padding-left:0;padding-right:0;font-size:calc(var(--fs)*1.1)}
+.rootcard.joining .slot.empty-slot{display:none}
+.made{display:flex;flex-direction:column;align-items:center;gap:4px;animation:pop .55s cubic-bezier(.2,1.6,.4,1)}
+.made .word{font-size:calc(var(--fs)*1.25);font-weight:700;line-height:1.1;padding:.12em .5em;background:var(--piece-bg);color:var(--piece-ink);border:3px solid var(--ok);border-radius:10px}
+.made .parts{font-size:max(15px,calc(var(--fs)*.5));color:#555}
+@keyframes pop{0%{transform:scale(.7);opacity:.2}100%{transform:scale(1);opacity:1}}
+.rootcard.shake{animation:shake .45s ease}
+@keyframes shake{20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+@media (prefers-reduced-motion:reduce){.made,.rootcard.shake{animation:none}.rootcard,.plus,.rootcard .root,.rootcard .tile,.rootcard .slot{transition:none}}
+.root{font-size:calc(var(--fs)*1.1);font-weight:700;line-height:1.15;padding:.18em .5em;background:var(--piece-bg);color:var(--piece-ink);border:3px solid var(--piece-ink);border-radius:10px}
+.slot{min-width:calc(var(--fs)*3.2);min-height:calc(var(--fs)*1.9);border:3px dashed #8A8A8A;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#8A8A8A;font-size:max(15px,calc(var(--fs)*.45));font-style:italic;touch-action:none;padding:3px}
+.slot.filled{border-color:transparent}
+.slot.over,.abank.over{outline:4px solid #C8102E;outline-offset:3px}
+.tile{font-size:var(--fs);font-weight:700;line-height:1.15;padding:.16em .5em;border-radius:10px;cursor:grab;user-select:none;-webkit-user-select:none;touch-action:none;border:3px solid #111;box-shadow:0 4px 0 #111;font-style:normal}
+.tile.prefix{background:#111;color:#fff}
+.tile.suffix{background:#6E6E6E;color:#fff}
+.tile.sel{outline:5px solid #C8102E;outline-offset:3px}
+.tile.lifted{opacity:.25}
+.tile.ghost{position:fixed;z-index:50;pointer-events:none;box-shadow:0 14px 28px rgba(0,0,0,.3);transform:rotate(-2deg) scale(1.05)}
+.bd-table{min-width:0!important;width:100%}
+.bd-table td{padding:4px 6px}
+.bd-table th{padding:8px 6px}
+.bd-table input{width:100%;padding:7px 9px;border-radius:8px;border:2px solid var(--line);background:var(--bg);color:var(--ink);font-size:16px}
+.bd-table td:nth-child(2) input{font-weight:700}
+.bd-table td:nth-child(4) input{min-width:14em}
+.radio-list{display:flex;flex-direction:column;gap:8px}
+.radio-list label{display:flex;gap:10px;align-items:center;font-size:17px}
+.radio-list input{width:20px;height:20px;accent-color:#C8102E}
+.pick-prompt{border:4px dashed #fff;border-radius:14px;padding:clamp(24px,5vw,64px);text-align:center;color:var(--on-bg);font-size:clamp(22px,2.4vw,34px)}
+.pick-prompt p{margin:0}
+.play-foot{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+.status{margin-right:auto;font-size:clamp(20px,2vw,30px);font-weight:700;min-height:1.4em;color:var(--on-bg)}
+.status:not(:empty){background:#111;color:#fff;padding:.3em .8em;border-radius:12px;border-left:10px solid var(--grey)}
+.status.win{border-left-color:var(--ok)} .status.miss{border-left-color:#fff}
+.done{font-size:clamp(24px,2.4vw,36px);padding:.35em 1.4em;border-radius:14px;border:4px solid #111;background:#fff;color:#111;font-weight:700;box-shadow:0 6px 0 #111}
+.done:hover{background:var(--grey-soft)}
+.done:active{transform:translateY(4px);box-shadow:0 2px 0 #111}
+.colors{border:4px solid #111;border-radius:14px;padding:14px 16px;margin-bottom:16px;background:var(--surface);display:flex;gap:20px;flex-wrap:wrap;align-items:flex-end}
+.colors .field input[type=color]{width:64px;height:44px;padding:2px;cursor:pointer}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:52px;height:44px;border-radius:9px;border:3px solid;font-weight:700;font-size:20px;display:flex;align-items:center;justify-content:center}
+.swatch[aria-pressed="true"]{outline:4px solid #111;outline-offset:2px}
+
+.celebrate{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:60}
+.bit{position:absolute;top:-20px;width:14px;height:22px;border-radius:3px;animation:fall 1.6s ease-in forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(540deg)}}
+@media (prefers-reduced-motion:reduce){.bit{display:none}.zone{transition:none}}
+
+.empty{max-width:640px;margin:8vh auto;text-align:center}
+.empty h2{font-size:32px;margin:0 0 10px;color:var(--on-bg)}
+.empty p{color:var(--on-bg);margin:0 0 20px}
+
+/* LIBRARY */
+.lib-head{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:18px}
+.lib-head h2{margin:0 auto 0 0;font-size:30px;color:var(--on-bg)}
+.lib-head .field{color:var(--on-bg)}
+#store-note{color:var(--on-bg)}
+.field{display:flex;flex-direction:column;gap:4px;font-size:15px;color:var(--muted);font-weight:700}
+.field input,.field select,.field textarea{font-size:17px;padding:9px 11px;border-radius:9px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font-weight:400}
+.field textarea{resize:vertical}
+.table-wrap{overflow-x:auto;background:var(--surface);border:4px solid #111;border-radius:12px}
+table{border-collapse:collapse;width:100%;min-width:720px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+th{font-size:15px;color:#fff;background:#111}
+tbody tr:nth-child(even){background:var(--grey-soft)}
+tr:last-child td{border-bottom:0}
+td .title{font-weight:700}
+td .preview{color:var(--muted);font-size:15px;max-width:520px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row-actions{display:flex;gap:6px;justify-content:flex-end}
+.row-actions .btn{padding:6px 12px;font-size:16px}
+.note{color:var(--muted);font-size:15px}
+
+/* EDITOR */
+.editor-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+@media (max-width:980px){.editor-grid{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:4px solid #111;border-radius:14px;padding:20px}
+.panel h3{margin:0 0 4px;font-size:22px}
+.panel .sub{margin:0 0 14px;color:var(--muted);font-size:15px}
+.meta-row{display:grid;grid-template-columns:2fr 1fr 1.4fr;gap:12px;margin-bottom:14px}
+@media (max-width:700px){.meta-row{grid-template-columns:1fr}}
+.pieces-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;counter-reset:p}
+.pieces-list li{display:grid;grid-template-columns:2.2em 1fr auto;gap:8px;align-items:center}
+.pieces-list li::before{counter-increment:p;content:counter(p);font-weight:700;color:var(--muted);text-align:right}
+.pieces-list input{width:100%;padding:8px 10px;border-radius:8px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.mini{display:flex;gap:4px}
+.mini button{border:1px solid var(--line);background:var(--surface);border-radius:7px;width:34px;height:34px;font-weight:700}
+.divider{border:0;border-top:1px solid var(--line);margin:20px 0}
+.hstack{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.gen-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.gen-grid .wide{grid-column:1/-1}
+.gen-out{font-size:15px;color:var(--muted);min-height:1.4em;margin-top:10px}
+.err{color:var(--bad);font-weight:700}
+.modal-back{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
+.modal{background:#fff;color:#111;border:4px solid #111;border-radius:16px;box-shadow:10px 10px 0 #111;padding:24px;max-width:480px;width:100%}
+.modal p{margin:0 0 20px;font-size:21px;font-weight:700}
+.modal .hstack{justify-content:flex-end}
+.modal .btn{background:#fff;color:#111;border-color:#111}
+.modal .btn.go{background:#111;border-color:#111;color:#fff;font-size:22px;padding:10px 26px}
+.modal .btn.danger{background:#C8102E;border-color:#C8102E;color:#fff}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:10px;font-weight:700;z-index:70}
+</style>
+</head>
+<body>
+<template id="tpl">
+<header class="bar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>Sequence Board</div>
+  <nav aria-label="Main">
+    <button class="tab" data-view="play" aria-current="page">Play</button>
+    <button class="tab" data-view="library">Activities</button>
+    <button class="tab teacher-only" data-view="editor" id="tab-editor" hidden>New activity</button>
+  </nav>
+</header>
+
+<main>
+<!-- PLAY -->
+<section id="view-play">
+  <div id="play-empty" class="empty" hidden>
+    <h2>No activities yet</h2>
+    <p>Paste a passage from a spreadsheet or generate one, then it will appear here for students.</p>
+    <button class="btn primary teacher-only" data-go="editor" hidden>Create a passage</button>
+  </div>
+  <div id="play-body" hidden>
+    <div class="play-head">
+      <div>
+        <h1 class="play-title" id="p-title"></h1>
+        <div class="tags" id="p-tags"></div>
+      </div>
+      <div class="controls">
+        <select id="quick-pick" aria-label="Choose an activity"></select>
+        <button class="btn quiet" id="btn-next">Next activity</button>
+        <button class="btn quiet" id="btn-reset">Start over</button>
+        <span class="size" role="group" aria-label="Text size">
+          <button id="fs-down" aria-label="Smaller text">A−</button><button id="fs-up" aria-label="Larger text">A+</button>
+        </span>
+        <button class="btn quiet" id="btn-sound" aria-pressed="true" title="Switch between cheering, chimes, and no sound">Sound: Cheers</button>
+        <button class="btn quiet" id="btn-colors" aria-expanded="false" aria-controls="colors">Colors</button>
+        <button class="btn quiet" id="btn-full" hidden>Full screen</button>
+      </div>
+    </div>
+    <div class="colors" id="colors" hidden>
+      <div class="field">Quick picks
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <label class="field">Piece background<input type="color" id="c-bg" value="#ffffff"></label>
+      <label class="field">Text color<input type="color" id="c-ink" value="#111111"></label>
+      <button class="btn quiet" id="c-reset">Reset colors</button>
+    </div>
+    <div class="pick-prompt" id="pick-prompt">
+      <p>Pick an activity from the list above, or press <b>Next activity</b>.</p>
+    </div>
+    <div class="toolrow needs-passage seq-only">
+      <button class="toggle" id="btn-seq" aria-pressed="false"><span class="knob" aria-hidden="true"></span>Sequence words</button>
+      <button class="toggle" id="btn-hl" aria-pressed="false"><span class="knob" aria-hidden="true"></span>Highlighter</button>
+      <span class="hl-tools" id="hl-tools" hidden>
+        <button class="hl-sw" data-c="yellow" style="background:#FFE14D" aria-label="Yellow highlighter" aria-pressed="true"></button>
+        <button class="hl-sw" data-c="green" style="background:#8EF0A8" aria-label="Green highlighter" aria-pressed="false"></button>
+        <button class="hl-sw" data-c="blue" style="background:#9CCBFF" aria-label="Blue highlighter" aria-pressed="false"></button>
+        <button class="hl-sw" data-c="pink" style="background:#FFB3D1" aria-label="Pink highlighter" aria-pressed="false"></button>
+        <button class="hl-sw eraser" data-c="erase" aria-pressed="false">Eraser</button>
+        <button class="hl-clear" id="hl-clear">Clear all</button>
+      </span>
+    </div>
+    <p class="zone-label needs-passage seq-only" id="board-hint">Drag the pieces to put the paragraph in order</p>
+    <div class="zone sheet needs-passage seq-only" id="board" aria-label="Paragraph pieces"></div>
+    <div class="toolrow needs-passage bld-only">
+      <button class="toggle" id="btn-bcheck" aria-pressed="false"><span class="knob" aria-hidden="true"></span>Check each word right away</button>
+      <button class="toggle" id="btn-bdefs" aria-pressed="false" hidden><span class="knob" aria-hidden="true"></span>Show definitions</button>
+      <button class="toggle" id="btn-border" aria-pressed="false"><span class="knob" aria-hidden="true"></span>In list order</button>
+      <span class="tag" id="bld-progress" hidden></span>
+    </div>
+    <p class="zone-label needs-passage bld-only">Drag a prefix or suffix onto each root word to build a new word. You can also tap a piece, then tap where it goes.</p>
+    <div class="builder needs-passage bld-only" id="builder">
+      <div class="bank-col"><h3>Prefixes</h3><div class="abank" id="bank-prefix" data-kind="prefix" aria-label="Prefix bank"></div></div>
+      <div class="roots" id="roots"></div>
+      <div class="bank-col"><h3>Suffixes</h3><div class="abank" id="bank-suffix" data-kind="suffix" aria-label="Suffix bank"></div></div>
+    </div>
+    <div class="play-foot needs-passage">
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+      <button class="btn quiet seq-only" id="btn-reveal">Show answer</button>
+      <button class="btn quiet bld-only" id="btn-newwords">New words</button>
+      <button class="done" id="btn-done">Done</button>
+    </div>
+  </div>
+</section>
+
+<!-- LIBRARY -->
+<section id="view-library" hidden>
+  <div class="lib-head">
+    <h2>Activities</h2>
+    <label class="field">Grade
+      <select id="f-grade"><option value="">All grades</option></select>
+    </label>
+    <label class="field">Skill
+      <select id="f-skill"><option value="">All skills</option></select>
+    </label>
+    <label class="field">Search
+      <input id="f-q" type="search" placeholder="Title or words">
+    </label>
+    <button class="btn" id="btn-download">Download app file</button>
+    <button class="btn primary teacher-only" data-go="editor" hidden>New activity</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Activity</th><th>Type</th><th>Grade</th><th>Skill</th><th>Items</th><th></th></tr></thead>
+      <tbody id="lib-rows"></tbody>
+    </table>
+  </div>
+  <p class="note" id="store-note">Passages are saved inside this page, so anyone you share the link with sees the same list.</p>
+</section>
+
+<!-- EDITOR -->
+<section id="view-editor" hidden>
+  <div class="lib-head"><h2 id="ed-heading">New activity</h2></div>
+  <div class="editor-grid">
+    <div class="panel">
+      <h3>Activity details</h3>
+      <p class="sub">Grade and skill are required so activities stay organized.</p>
+      <label class="field" style="margin-bottom:14px">Activity type
+        <select id="ed-type">
+          <option value="sequence">Sentence order (put a paragraph in order)</option>
+          <option value="builder">Word builder (prefixes and suffixes, 4 root words)</option>
+          <option value="family">Word family (one root word, match words to definitions)</option>
+        </select>
+      </label>
+      <div class="meta-row">
+        <label class="field">Title<input id="ed-title" placeholder="Planting a seed"></label>
+        <label class="field">Grade level<select id="ed-grade"><option value="">Choose…</option></select></label>
+        <label class="field">Skill<select id="ed-skill"><option value="">Choose…</option></select></label>
+      </div>
+      <label class="field" id="ed-skill-other-wrap" hidden>Skill name<input id="ed-skill-other" placeholder="e.g. Transition words"></label>
+
+      <div class="ed-seq">
+      <hr class="divider">
+      <h3>Paste from a spreadsheet</h3>
+      <p class="sub">Copy cells in the correct order and paste them here. Each cell becomes one piece, read left to right, then top to bottom. The game shuffles them for students. A single pasted paragraph is split into sentences.</p>
+      <label class="field"><span class="sr">Pasted cells</span><textarea id="ed-paste" rows="5" placeholder="Paste cells here"></textarea></label>
+      <div class="hstack" style="margin-top:10px">
+        <button class="btn" id="btn-parse">Use pasted cells</button>
+        <span class="note" id="parse-note"></span>
+      </div>
+
+      <hr class="divider">
+      <h3>Pieces in correct order</h3>
+      <p class="sub">This is the answer key. Edit, reorder, or remove pieces.</p>
+      <ol class="pieces-list" id="ed-pieces"></ol>
+      <div class="hstack" style="margin-top:12px">
+        <button class="btn quiet" id="btn-add-piece">Add piece</button>
+      </div>
+
+      </div>
+      <div class="ed-bld" hidden>
+      <hr class="divider">
+      <h3>Paste from a spreadsheet</h3>
+      <p class="sub" id="bd-help">Use columns in this order: prefix (A), root word (B), suffix (C), definition (D). Leave a cell empty when there isn’t one. To accept more than one answer, list the root on another row or put several in one cell separated by commas. A header row is skipped.</p>
+      <label class="field"><span class="sr">Pasted rows</span><textarea id="bd-paste" rows="6" placeholder="un&#9;happy&#9;ness&#9;the feeling of being sad&#10;re&#9;play&#9;&#9;to play again"></textarea></label>
+      <div class="hstack" style="margin-top:10px">
+        <button class="btn" id="btn-bd-parse">Use pasted rows</button>
+        <span class="note" id="bd-note"></span>
+      </div>
+
+      <hr class="divider">
+      <h3>Word list</h3>
+      <p class="sub" id="bd-list-help">Each round picks 4 root words at random from this list. Any prefix or suffix listed for a root counts as correct.</p>
+      <table class="bd-table">
+        <thead><tr><th>Prefix</th><th>Root word</th><th>Suffix</th><th>Definition</th><th></th></tr></thead>
+        <tbody id="bd-rows"></tbody>
+      </table>
+      <div class="hstack" style="margin-top:12px">
+        <button class="btn quiet" id="btn-bd-add">Add row</button>
+      </div>
+
+      <div class="radio-list" id="bd-defs-wrap" style="margin-top:14px">
+        <label><input type="checkbox" id="bd-show-defs"> Use definitions (needs definitions in column D)</label>
+      </div>
+      <div class="radio-list" id="bd-defmode-wrap" role="radiogroup" aria-label="Definitions" style="margin-top:10px;padding-left:4px">
+        <label><input type="radio" name="defmode" value="show" checked> Show definitions as clues: students build the word that matches each one</label>
+        <label><input type="radio" name="defmode" value="after"> Hide definitions until the word is checked: any listed word counts, then its meaning appears</label>
+      </div>
+
+      <hr class="divider">
+      <h3>Bank setting</h3>
+      <p class="sub">What happens to a prefix or suffix after a student uses it.</p>
+      <div class="radio-list" role="radiogroup" aria-label="Bank setting">
+        <label><input type="radio" name="bankmode" value="keep"> Stays in the bank and can be used again</label>
+        <label><input type="radio" name="bankmode" value="remove" checked> Disappears from the bank</label>
+        <label><input type="radio" name="bankmode" value="replace"> Disappears and a new one is added</label>
+      </div>
+      <hr class="divider">
+      <h3>When to check</h3>
+      <div class="radio-list" role="radiogroup" aria-label="When to check">
+        <label><input type="radio" name="checkmode" value="all" checked> Wait until all words are built, then press Done</label>
+        <label><input type="radio" name="checkmode" value="each"> Check each word as soon as it’s built</label>
+      </div>
+      <div class="radio-list" style="margin-top:14px">
+      </div>
+      <hr class="divider">
+      <h3>Word order</h3>
+      <div class="radio-list" role="radiogroup" aria-label="Word order">
+        <label><input type="radio" name="wordorder" value="random" checked> Pick words at random each round</label>
+        <label><input type="radio" name="wordorder" value="list"> Go through the list in order (New words moves to the next ones)</label>
+      </div>
+      <div class="radio-list" style="margin-top:14px">
+        <label><input type="checkbox" id="bd-full-bank"> Always show every prefix and suffix from the word list, one of each, in list order (pieces never repeat and come right back after they’re used)</label>
+        <label><input type="checkbox" id="bd-hide-empty" checked> Hide the prefix or suffix bank when it’s empty</label>
+      </div>
+      </div>
+
+      <hr class="divider">
+      <div class="hstack">
+        <button class="btn primary" id="btn-save">Save activity</button>
+        <button class="btn" id="btn-save-play">Save and play</button>
+        <button class="btn quiet" id="btn-clear">Clear</button>
+        <span class="err" id="ed-err"></span>
+      </div>
+    </div>
+
+    <div class="panel" id="gen-panel">
+      <h3>Auto-generate</h3>
+      <p class="sub" id="gen-sub">Claude writes a passage and splits it into pieces. It loads into the editor so you can review it before saving.</p>
+      <div class="gen-grid">
+        <label class="field">Grade level<select id="g-grade"></select></label>
+        <label class="field">Skill<select id="g-skill"></select></label>
+        <label class="field wide"><span id="g-topic-label">Topic (optional)</span><input id="g-topic" placeholder="e.g. a trip to the aquarium, the water cycle"></label>
+        <label class="field"><span id="g-count-label">Number of pieces</span>
+          <select id="g-count"><option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option><option>10</option><option>12</option></select>
+        </label>
+        <label class="field" id="g-affix-wrap" hidden>Build words with
+          <select id="g-affix">
+            <option value="both">Prefixes and suffixes</option>
+            <option value="prefix">Prefixes only</option>
+            <option value="suffix">Suffixes only</option>
+          </select>
+        </label>
+        <label class="field" id="g-size-wrap">Piece size
+          <select id="g-size">
+            <option value="sentences">Whole sentences</option>
+            <option value="fragments">Sentence parts</option>
+            <option value="mixed" selected>Mix of both</option>
+          </select>
+        </label>
+      </div>
+      <div class="hstack">
+        <button class="btn primary" id="btn-gen">Generate</button>
+        <button class="btn quiet" id="btn-gen-stop" hidden>Stop</button>
+      </div>
+      <div class="gen-out" id="gen-out"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div class="celebrate" id="celebrate" aria-hidden="true"></div>
+<div class="toast" id="toast" hidden></div>
+<div class="modal-back" id="modal" hidden>
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modal-msg">
+    <p id="modal-msg"></p>
+    <div class="hstack"><button class="btn" id="modal-cancel">Cancel</button><button class="btn danger" id="modal-ok">OK</button></div>
+  </div>
+</div>
+
+</template>
+<script type="application/json" id="passages-data">[{"id": "example-storm", "title": "The big storm", "grade": "4", "skill": "Cause and effect", "pieces": ["Dark clouds rolled over the town on Friday afternoon.", "Because the wind grew so strong,", "the old oak tree in the park lost a heavy branch.", "The branch fell onto a power line,", "so every house on Elm Street lost electricity.", "As a result, families lit candles and told stories until the lights came back."], "createdAt": 1790000000001, "updatedAt": 1790000000001}, {"id": "example-library", "title": "A trip to the library", "grade": "3", "skill": "Punctuation", "pieces": ["On Saturday,", "Leo and his dad walked to the library.", "\"Can I get three books today?\"", "Leo asked.", "His dad smiled and said,", "\"Yes, if you promise to read them all!\""], "createdAt": 1790000000002, "updatedAt": 1790000000002}, {"id": "pmuh6p1ei50mk2", "title": "A Day at the Beach", "grade": "4", "skill": "Sequence of events", "pieces": ["First, we packed our towels, sunscreen, and a big umbrella into the car.", "Next, we spread out our blanket and set up the umbrella near the water.", "After that, we swam in the cool waves and built a sandcastle together.", "Finally, we rinsed off the sand and headed home as the sun began to set."], "updatedAt": 1790354251098, "createdAt": 1790354251098}, {"id": "pmuh6pq0z5y4u1", "title": "How to Bake a Cake", "grade": "4", "skill": "Sequence of events", "pieces": ["First, Mia gathered the flour, sugar, eggs, and butter from the kitchen shelf.", "Next, she mixed all the ingredients together in a big bowl until the batter was smooth.", "Then, she poured the batter into a round pan and placed it in the hot oven.", "After that, she waited thirty minutes while the cake baked and filled the house with a sweet smell.", "Finally, she took the cake out, let it cool, and spread creamy frosting on top."], "updatedAt": 1790354283011, "createdAt": 1790354283011}, {"id": "pmuh6v8nwj0lae", "title": "My Fun Vacation", "grade": "4", "skill": "Sequence of events", "pieces": ["First, my family packed the car and drove to the beach house.", "Next, we put on our swimsuits and played in the ocean waves.", "After that, we built a giant sandcastle and ate a picnic lunch.", "Finally, we watched the sunset before driving home the next morning."], "updatedAt": 1790354540444, "createdAt": 1790354540444}, {"id": "pmuh6wktflaewf", "title": "How to Make a Kite", "grade": "3", "skill": "Sequence of events", "pieces": ["First, gather two sticks, some paper, string, and tape.", "Next, cross the sticks to form an X shape and tape them together tightly.", "After that, wrap the paper around the frame and tape down the edges.", "Finally, tie a long string to the middle of the kite so you can fly it in the wind."], "updatedAt": 1790354602851, "createdAt": 1790354602851}, {"id": "pmuob0tqywul1z", "type": "builder", "title": "Animal Root Words: Prefixes & Suffixes", "grade": "4", "skill": "Prefixes and suffixes", "pieces": [], "updatedAt": 1790785530869, "createdAt": 1790784782746, "rows": [{"prefix": "", "root": "fish", "suffix": "er, ing, y"}, {"prefix": "", "root": "wing", "suffix": "ed, less"}, {"prefix": "", "root": "feather", "suffix": "ed, less, y"}, {"prefix": "", "root": "horn", "suffix": "ed, less"}, {"prefix": "", "root": "claw", "suffix": "ed, less"}, {"prefix": "", "root": "tail", "suffix": "ed, less"}], "bankMode": "keep", "hideEmpty": true, "checkMode": "each"}, {"id": "example-family", "type": "builder", "style": "family", "showDefs": false, "title": "Word families: help, play, kind", "grade": "3", "skill": "Prefixes and suffixes", "pieces": [], "rows": [{"prefix": "", "root": "help", "suffix": "er", "def": "a person who helps"}, {"prefix": "", "root": "help", "suffix": "ful", "def": "giving help; useful"}, {"prefix": "", "root": "help", "suffix": "less", "def": "not able to help yourself"}, {"prefix": "un", "root": "help", "suffix": "ful", "def": "not giving help"}, {"prefix": "", "root": "help", "suffix": "ing", "def": "giving help right now"}, {"prefix": "re", "root": "play", "suffix": "", "def": "to play again"}, {"prefix": "", "root": "play", "suffix": "er", "def": "a person who plays a game"}, {"prefix": "", "root": "play", "suffix": "ful", "def": "full of fun; likes to play"}, {"prefix": "", "root": "play", "suffix": "ed", "def": "had fun doing something in the past"}, {"prefix": "un", "root": "kind", "suffix": "", "def": "not nice or caring"}, {"prefix": "", "root": "kind", "suffix": "ness", "def": "being nice and caring"}, {"prefix": "", "root": "kind", "suffix": "ly", "def": "in a nice, caring way"}, {"prefix": "un", "root": "kind", "suffix": "ness", "def": "being mean or not caring"}], "bankMode": "remove", "hideEmpty": true, "checkMode": "all", "createdAt": 1790500000000, "updatedAt": 1790500000000}, {"id": "pmupvcnyacoie9", "type": "sequence", "title": "Mia's Spelling Mistake", "grade": "4", "skill": "Prefixes and suffixes", "pieces": ["Last week, Mia had to rewrite her story", "because she misspelled many words.", "She felt unhappy about the mistake,", "but she did not disagree with her teacher's advice.", "Instead, she decided to submerge herself in extra reading practice.", "First, she reread the directions carefully", "so she would not misunderstand them again.", "Then she used a dictionary to unscramble tricky spellings.", "Her teacher said it was unfair to expect perfect work right away, so Mia should not disapprove of her own effort.", "Soon, Mia felt confident instead of discouraged, and she was proud to resubmit her finished story."], "updatedAt": 1790879393602, "createdAt": 1790879393602}, {"id": "pmuqxts70r99q0", "type": "builder", "title": "Prefix Power: Re, Un, Dis, Pre", "grade": "4", "skill": "Prefixes and suffixes", "pieces": [], "updatedAt": 1790954217783, "createdAt": 1790944017660, "rows": [{"prefix": "pre", "root": "heat", "suffix": "", "def": "warm an oven before cooking"}, {"prefix": "pre", "root": "view", "suffix": "", "def": "see something before it starts"}, {"prefix": "pre", "root": "pay", "suffix": "", "def": "pay for something ahead of time"}, {"prefix": "pre", "root": "school", "suffix": "", "def": "school children go to before kindergarten"}, {"prefix": "pre", "root": "test", "suffix": "", "def": "a test given before learning something"}, {"prefix": "un", "root": "do", "suffix": "", "def": "take back something done"}, {"prefix": "un", "root": "lock", "suffix": "", "def": "open something that was locked"}, {"prefix": "un", "root": "like", "suffix": "", "def": "not the same as something"}, {"prefix": "un", "root": "happy", "suffix": "", "def": "not happy; sad"}, {"prefix": "un", "root": "fair", "suffix": "", "def": "not fair or equal"}, {"prefix": "dis", "root": "like", "suffix": "", "def": "not enjoy something"}, {"prefix": "dis", "root": "connect", "suffix": "", "def": "stop two things from joining"}, {"prefix": "dis", "root": "agree", "suffix": "", "def": "have a different opinion"}, {"prefix": "dis", "root": "appear", "suffix": "", "def": "go out of sight"}, {"prefix": "dis", "root": "honest", "suffix": "", "def": "not truthful"}, {"prefix": "re", "root": "do", "suffix": "", "def": "do something again"}, {"prefix": "re", "root": "heat", "suffix": "", "def": "heat food again"}, {"prefix": "re", "root": "view", "suffix": "", "def": "look at something again"}, {"prefix": "re", "root": "write", "suffix": "", "def": "write something again"}, {"prefix": "re", "root": "fill", "suffix": "", "def": "fill something up again"}], "bankMode": "keep", "hideEmpty": true, "checkMode": "all", "style": "four", "showDefs": true, "fullBank": true}]</script>
+<script id="app-script">
+const SELF_SRC = document.currentScript.textContent;
+const TPL_HTML = document.getElementById("tpl").innerHTML;
+const STYLE_SRC = document.getElementById("app-style").textContent;
+document.body.prepend(document.getElementById("tpl").content.cloneNode(true));
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+const GRADES = ["K","1","2","3","4","5","6","7","8","9","10","11","12"];
+const SEQ_SKILLS = ["Sequence of events","Sentence structure","Punctuation","Transition words","Main idea and details","Cause and effect","Steps in a process","Story structure"];
+const WORD_SKILLS = ["Prefixes and suffixes","Prefixes","Suffixes","Root words","Word meaning","Spelling patterns"];
+const SKILLS = [...SEQ_SKILLS, ...WORD_SKILLS];
+// keep both skill dropdowns in step with the activity type
+function fillSkillLists(isWord, want){
+  const list = isWord ? WORD_SKILLS : SEQ_SKILLS;
+  const es = $("#ed-skill"), gs = $("#g-skill");
+  const cur = want !== undefined ? want : (es.value === "__other" ? "__other" : es.value);
+  es.textContent = "";
+  const ph = document.createElement("option"); ph.value = ""; ph.textContent = "Choose…"; es.append(ph);
+  [...list, "__other"].forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v === "__other" ? "Other…" : v; es.append(o); });
+  if (cur === "__other") es.value = "__other";
+  else if (cur && list.includes(cur)) es.value = cur;
+  else if (cur && SKILLS.includes(cur)) es.value = isWord ? "Prefixes and suffixes" : "";
+  else if (cur) { es.value = "__other"; $("#ed-skill-other").value = cur; }
+  else es.value = isWord ? "Prefixes and suffixes" : "";
+  $("#ed-skill-other-wrap").hidden = es.value !== "__other";
+  gs.textContent = "";
+  list.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v; gs.append(o); });
+  gs.value = list.includes(es.value) ? es.value : list[0];
+}
+const gradeLabel = g => g === "K" ? "Kindergarten" : "Grade " + g;
+
+/* ---------- storage: shared db when available, browser storage otherwise ---------- */
+/* ---------- storage: passages live inside this page; saving publishes a new version ---------- */
+function buildPage(items){
+  const json = JSON.stringify(items).replace(/</g, "\\u003c");
+  return "<!doctype html>\n<html lang=\"en\">\n<head>\n" +
+    "<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n" +
+    "<title>Sequence Board</title>\n" +
+    "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n" +
+    "<link href=\"https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap\" rel=\"stylesheet\">\n" +
+    "<style id=\"app-style\">" + STYLE_SRC + "<\/style>\n</head>\n<body>\n" +
+    "<template id=\"tpl\">" + TPL_HTML + "</template>\n" +
+    "<script type=\"application/json\" id=\"passages-data\">" + json + "<\/script>\n" +
+    "<script id=\"app-script\">" + SELF_SRC + "<\/script>\n</body>\n</html>\n";
+}
+let canEdit = false;
+function applyRole(){
+  $$(".teacher-only").forEach(el => { el.hidden = !canEdit; });
+  if (!canEdit && !$("#view-editor").hidden) show("play");
+  if (!$("#view-library").hidden) renderLibrary();
+}
+const LOCAL_KEY = "seqboard.local.v1";
+const store = {
+  items: [], listeners: [], art: null, local: false,
+  emit(){ this.listeners.forEach(f => f()); },
+  init(){
+    try { this.items = JSON.parse($("#passages-data").textContent || "[]"); } catch { this.items = []; }
+    if (!(window.claude && window.claude.use)) {
+      // downloaded copy opened on its own: edit freely, keep changes in this browser
+      this.local = true;
+      // merge this browser's saved copy with the activities built into the file: the newer version of each wins
+      let saved = null, deleted = [];
+      try { saved = JSON.parse(localStorage.getItem(LOCAL_KEY) || "null"); } catch {}
+      try { deleted = JSON.parse(localStorage.getItem(LOCAL_KEY + ".deleted") || "[]"); } catch {}
+      if (Array.isArray(saved)) {
+        const map = new Map(this.items.filter(x => !deleted.includes(x.id)).map(x => [x.id, x]));
+        saved.forEach(x => { const cur = map.get(x.id); if (!cur || (x.updatedAt || 0) > (cur.updatedAt || 0)) map.set(x.id, x); });
+        this.items = [...map.values()];
+      }
+      $("#store-note").textContent = "This is a downloaded copy. Passages you add or change are kept in this browser. Use Download app file to save them into a new copy you can move to another computer.";
+      canEdit = true; this.emit(); applyRole();
+      return;
+    }
+    this.emit();
+    (async () => {
+      try { this.art = window.claude && window.claude.use ? await window.claude.use("artifact") : null; } catch { this.art = null; }
+      let user = null;
+      try { user = window.claude && window.claude.use ? await window.claude.use("user") : null; } catch { user = null; }
+      let ok = false;
+      if (user && this.art) { try { ok = (await user.canEdit()) || (await user.isOwner()); } catch { ok = false; } }
+      canEdit = !!ok; applyRole();
+    })();
+  },
+  newId(){ return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); },
+  async commit(next, after){
+    if (this.local) {
+      const gone = this.items.filter(x => !next.some(n => n.id === x.id)).map(x => x.id);
+      this.items = next;
+      try {
+        localStorage.setItem(LOCAL_KEY, JSON.stringify(next));
+        if (gone.length) { const prev = JSON.parse(localStorage.getItem(LOCAL_KEY + ".deleted") || "[]"); localStorage.setItem(LOCAL_KEY + ".deleted", JSON.stringify([...new Set([...prev, ...gone])])); }
+      } catch { throw { code: "local_full" }; }
+      this.emit(); return;
+    }
+    if (!this.art) throw { code: "not_granted" };
+    try { sessionStorage.setItem("seqboard.after", JSON.stringify(after || {})); } catch {}
+    try { await this.art.publish(buildPage(next)); this.items = next; this.emit(); }
+    catch (e) {
+      try { sessionStorage.removeItem("seqboard.after"); } catch {}
+      if (e && (e.code === "not_writer" || e.code === "not_granted" || e.code === "not_declared" || e.code === "consent_required" || e.code === "capability_disabled")) { canEdit = false; applyRole(); }
+      throw e;
+    }
+  },
+  async save(p, afterFor){
+    const id = p.id || this.newId();
+    const body = { id, type: p.type || "sequence", title: p.title, grade: p.grade, skill: p.skill, pieces: p.pieces || [], updatedAt: Date.now(), createdAt: p.createdAt || Date.now() };
+    if (body.type === "builder") { body.rows = p.rows || []; body.bankMode = p.bankMode || "remove"; body.hideEmpty = p.hideEmpty !== false; body.fullBank = !!p.fullBank; body.wordOrder = p.wordOrder === "list" ? "list" : "random"; body.checkMode = p.checkMode === "each" ? "each" : "all"; body.style = p.style === "family" ? "family" : "four"; body.showDefs = !!p.showDefs; body.defMode = p.defMode === "after" ? "after" : "show"; }
+    const next = this.items.filter(x => x.id !== id).concat([body]);
+    await this.commit(next, afterFor ? afterFor(id) : {});
+    return id;
+  },
+  async remove(id){ await this.commit(this.items.filter(x => x.id !== id), { view: "library", toast: "Passage deleted" }); },
+  sorted(){ return [...this.items].sort((a, b) => (GRADES.indexOf(a.grade) - GRADES.indexOf(b.grade)) || String(a.title).localeCompare(String(b.title))); },
+  get(id){ return this.items.find(x => x.id === id); }
+};
+function saveErrorText(e){
+  const c = e && e.code;
+  if (c === "conflict") return "Someone saved a newer version first. The page is reloading; make your change again.";
+  if (c === "not_writer" || c === "not_granted" || c === "not_declared" || c === "consent_required" || c === "capability_disabled") return "This copy is view-only, so passages can’t be changed here.";
+  if (c === "local_full") return "This browser couldn’t store the passage. Download the app file to keep your work.";
+  if (c === "rate_limited") return "Saving too often. Wait a moment and try again.";
+  return "Couldn’t save. Check your connection and try again.";
+}
+
+/* ---------- views ---------- */
+function show(view){
+  ["play","library","editor"].forEach(v => { $("#view-" + v).hidden = v !== view; });
+  $$(".tab").forEach(t => { if (t.dataset.view === view) t.setAttribute("aria-current","page"); else t.removeAttribute("aria-current"); });
+  if (view === "play") renderPlay();
+  if (view === "library") renderLibrary();
+  window.scrollTo(0, 0);
+}
+$$(".tab").forEach(t => t.addEventListener("click", () => {
+  if (t.dataset.view === "editor") openEditor(null); else show(t.dataset.view);
+}));
+document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) { if (g.dataset.go === "editor") openEditor(null); else show(g.dataset.go); } });
+
+// in-page confirmation (browser pop-ups are blocked inside the hosted page)
+function askConfirm(msg, okLabel = "OK", notice = false){
+  return new Promise(resolve => {
+    const m = $("#modal"), ok = $("#modal-ok"), cancel = $("#modal-cancel");
+    const back = document.activeElement;
+    $("#modal-msg").textContent = msg; ok.textContent = okLabel; m.hidden = false;
+    cancel.hidden = notice; ok.classList.toggle("danger", !notice); ok.classList.toggle("go", notice);
+    ok.focus();
+    const done = v => { m.hidden = true; ok.onclick = cancel.onclick = m.onclick = null; document.removeEventListener("keydown", onKey, true); if (back && back.focus) back.focus(); resolve(v); };
+    const onKey = e => { if (e.key === "Escape") { e.preventDefault(); done(false); } };
+    ok.onclick = () => done(true); cancel.onclick = () => done(false);
+    m.onclick = e => { if (e.target === m) done(false); };
+    document.addEventListener("keydown", onKey, true);
+  });
+}
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2200); }
+
+/* ---------- PLAY ---------- */
+const game = { passageId: null, correct: [], pieces: [], checked: false };
+let fs = 34;
+try { fs = Number(localStorage.getItem("seqboard.fs")) || 34; } catch {}
+function applyFs(){ document.documentElement.style.setProperty("--fs", fs + "px"); try { localStorage.setItem("seqboard.fs", fs); } catch {} }
+applyFs();
+$("#fs-up").onclick = () => { fs = Math.min(64, fs + 4); applyFs(); };
+$("#fs-down").onclick = () => { fs = Math.max(20, fs - 4); applyFs(); };
+
+if (document.fullscreenEnabled) {
+  $("#btn-full").hidden = false;
+  $("#btn-full").onclick = async () => {
+    try { if (document.fullscreenElement) await document.exitFullscreen(); else await document.documentElement.requestFullscreen(); } catch {}
+  };
+  document.addEventListener("fullscreenchange", () => { $("#btn-full").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen"; });
+}
+
+// Shuffle so the first and last pieces are never already in their correct spots.
+function shuffle(arr){
+  const n = arr.length;
+  if (n < 2) return [...arr];
+  const ok = a => a[0].text !== arr[0].text && a[n - 1].text !== arr[n - 1].text;
+  for (let tries = 0; tries < 500; tries++) {
+    const a = [...arr];
+    for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    if (ok(a)) return a;
+  }
+  // fallback: rotate by one so the last piece leads and the first moves to second
+  return [arr[n - 1], ...arr.slice(0, n - 1)];
+}
+
+function loadPassage(id){
+  const p = store.get(id); if (!p) return;
+  game.passageId = id;
+  if (p.type === "builder") { loadBuilder(p); setStatus(""); renderPlay(); return; }
+  game.correct = p.pieces.map(s => String(s).trim()).filter(Boolean);
+  game.pieces = shuffle(game.correct.map((text, i) => ({ id: "k" + i, text })));
+  game.hl = {};
+  game.tries = 1;
+  game.checked = false;
+  setStatus("");
+  renderPlay();
+}
+
+function setStatus(msg, cls){ const s = $("#status"); s.textContent = msg; s.className = "status" + (cls ? " " + cls : ""); }
+
+function renderPlay(){
+  const items = store.sorted();
+  $("#play-empty").hidden = items.length > 0;
+  $("#play-body").hidden = items.length === 0;
+  if (!items.length) return;
+  const qp = $("#quick-pick"); qp.textContent = "";
+  const ph = document.createElement("option"); ph.value = ""; ph.textContent = "Choose an activity…"; qp.append(ph);
+  items.forEach(it => { const o = document.createElement("option"); o.value = it.id; o.textContent = `${it.title || "Untitled"} (${it.grade === "K" ? "K" : "Gr " + it.grade}${it.type === "builder" ? ", " + typeLabel(it).toLowerCase() : ""})`; qp.append(o); });
+  const p = game.passageId ? store.get(game.passageId) : null;
+  if (!p) game.passageId = null;
+  qp.value = p ? p.id : "";
+  const isB = !!(p && p.type === "builder");
+  $$(".needs-passage, .seq-only, .bld-only").forEach(el => {
+    el.hidden = (el.classList.contains("needs-passage") && !p) || (el.classList.contains("seq-only") && isB) || (el.classList.contains("bld-only") && !isB);
+  });
+  $("#pick-prompt").hidden = !!p;
+  $("#btn-reset").disabled = !p;
+  if (!p) {
+    $("#p-title").textContent = "Choose an activity";
+    $("#p-tags").textContent = "";
+    $("#colors").hidden = true; $("#btn-colors").setAttribute("aria-expanded", "false");
+    return;
+  }
+  $("#p-title").textContent = p.title || "Untitled passage";
+  const tags = $("#p-tags"); tags.textContent = "";
+  const countTag = isB ? typeLabel(p) : game.correct.length + " pieces";
+  [gradeLabel(p.grade), p.skill, countTag].forEach(t => { const s = document.createElement("span"); s.className = "tag"; s.textContent = t; tags.append(s); });
+  if (isB) drawBuilder(); else drawZones();
+}
+
+/* sequence and transition words (longest phrases are matched first) */
+const SEQ_PHRASES = [
+  "first","second","third","fourth","fifth","next","then","after","afterward","afterwards","later","before",
+  "finally","last","lastly","meanwhile","soon","now","eventually","during","until","when","while","once",
+  "following","previously","earlier","initially","subsequently","immediately","today","tomorrow","yesterday",
+  "after that","after a while","at first","at last","in the end","to begin","to start","first of all",
+  "as soon as","in the meantime","the next day","the following day","next time","by the time",
+  "at the same time","right after","shortly after","one day","the end","in conclusion","to finish"
+].map(p => p.split(" ")).sort((a, b) => b.length - a.length);
+const norm = t => t.toLowerCase().replace(/^[^a-z0-9']+|[^a-z0-9']+$/g, "");
+function seqMarks(words){
+  const n = words.map(norm), hit = new Array(words.length).fill(false);
+  for (let i = 0; i < n.length; i++) {
+    for (const ph of SEQ_PHRASES) {
+      if (ph.every((w, k) => n[i + k] === w)) { for (let k = 0; k < ph.length; k++) hit[i + k] = true; i += ph.length - 1; break; }
+    }
+  }
+  return hit;
+}
+let autoSeq = false, hlMode = false, hlColor = "yellow";
+try { autoSeq = localStorage.getItem("seqboard.autoseq") === "1"; } catch {}
+
+function pieceEl(pc, marks){
+  const d = document.createElement("div");
+  d.className = "piece" + (marks ? " " + marks : "");
+  d.dataset.id = pc.id;
+  const parts = pc.text.split(/(\s+)/);
+  const words = parts.filter(t => t && !/^\s+$/.test(t));
+  const seq = autoSeq ? seqMarks(words) : [];
+  const hl = (game.hl && game.hl[pc.id]) || {};
+  let wi = 0;
+  parts.forEach(t => {
+    if (!t) return;
+    if (/^\s+$/.test(t)) { d.append(document.createTextNode(t)); return; }
+    const sp = document.createElement("span");
+    sp.className = "w" + (seq[wi] ? " seq" : "") + (hl[wi] ? " hl-" + hl[wi] : "");
+    sp.dataset.w = wi; sp.textContent = t;
+    d.append(sp); wi++;
+  });
+  d.tabIndex = 0;
+  d.setAttribute("role", "button");
+  return d;
+}
+
+function drawZones(){
+  $("#btn-done").hidden = false;
+  const board = $("#board");
+  board.textContent = "";
+  game.pieces.forEach((pc, i) => {
+    let m = "";
+    if (game.checked) m = pc.text === game.correct[i] ? "ok" : "bad";
+    const el = pieceEl(pc, m);
+    el.setAttribute("aria-label", `${pc.text}. Position ${i + 1} of ${game.pieces.length}. Use arrow keys to move.`);
+    board.append(el);
+  });
+}
+
+$("#quick-pick").addEventListener("change", e => { if (e.target.value) loadPassage(e.target.value); else { game.passageId = null; renderPlay(); } });
+$("#btn-next").onclick = () => {
+  const items = store.sorted(); if (!items.length) return;
+  const i = items.findIndex(x => x.id === game.passageId);
+  loadPassage(items[(i + 1) % items.length].id);
+};
+$("#btn-reset").onclick = () => {
+  const cur = store.get(game.passageId); if (!cur) return;
+  if (cur.type === "builder") { bld.tries = 1; resetBuilder(); drawBuilder(); setStatus(""); }
+  else loadPassage(cur.id);
+};
+$("#btn-reveal").onclick = () => {
+  if (!game.correct.length) return;
+  const used = new Set();
+  game.pieces = game.correct.map(t => { const pc = game.pieces.find(x => x.text === t && !used.has(x.id)); used.add(pc.id); return pc; });
+  game.checked = true;
+  drawZones(); setStatus("Here is the correct order.");
+};
+
+$("#btn-done").onclick = async () => {
+  const cur = store.get(game.passageId);
+  if (cur && cur.type === "builder") return bldDone();
+  if (!game.pieces.length) return;
+  const allRight = game.pieces.every((pc, i) => pc.text === game.correct[i]);
+  if (allRight) {
+    game.checked = true; drawZones();
+    setStatus("Correct! The paragraph is in order.", "win"); celebrate(); playWin();
+    return;
+  }
+  // not correct: reveal nothing, reshuffle, and try again
+  game.tries = (game.tries || 1) + 1;
+  await askConfirm("Not quite. The pieces will be mixed up again so you can try again.", "Try again", true);
+  game.pieces = shuffle(game.correct.map((text, i) => game.pieces.find(p => p.id === "k" + i) || { id: "k" + i, text }));
+  game.checked = false;
+  drawZones();
+  setStatus(`Try #${game.tries}`, "miss");
+};
+
+/* ---------- celebration sounds (made in the browser, no files needed) ---------- */
+// sound style: "cheer" (kids clapping and cheering), "chime", or "off"
+let soundMode = "cheer";
+try { const v = localStorage.getItem("seqboard.sound"); soundMode = v === "0" || v === "off" ? "off" : v === "chime" ? "chime" : "cheer"; } catch {}
+const soundOn = () => soundMode !== "off";
+let actx = null;
+function audio(){
+  try {
+    if (!actx) { const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null; actx = new AC(); }
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  } catch { return null; }
+}
+// browsers only allow sound after a touch or click, so wake audio on the first one
+document.addEventListener("pointerdown", () => { if (soundOn()) audio(); }, { once: true, capture: true });
+function tone(c, freq, start, dur, type = "triangle", vol = 0.22){
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, start);
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(start); o.stop(start + dur + 0.05);
+}
+// ---- crowd of kids: clapping + cheering, built from noise and voice-like tones ----
+function makeNoise(c){
+  if (c._noise) return c._noise;
+  const len = c.sampleRate * 2, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  c._noise = buf; return buf;
+}
+function clap(c, out, t, vol){
+  const src = c.createBufferSource(); src.buffer = makeNoise(c);
+  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 900 + Math.random() * 1600; bp.Q.value = 0.9 + Math.random();
+  const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 400;
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(vol * 0.25, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07 + Math.random() * 0.04);
+  src.connect(bp); bp.connect(hp); hp.connect(g); g.connect(out);
+  src.start(t, Math.random() * 1.5, 0.12); 
+}
+function applause(c, out, t, dur, people, level){
+  for (let p = 0; p < people; p++) {
+    const rate = 3.2 + Math.random() * 2.2;              // claps per second for this child
+    const startAt = t + Math.random() * 0.35;
+    const stopAt = t + dur * (0.75 + Math.random() * 0.25);
+    const vol = level * (0.5 + Math.random() * 0.5);
+    for (let x = startAt; x < stopAt; x += (1 / rate) * (0.85 + Math.random() * 0.3)) {
+      const fade = Math.min(1, (x - t) / 0.25, (t + dur - x) / (dur * 0.45));
+      if (fade > 0.03) clap(c, out, x, vol * fade);
+    }
+  }
+}
+function kidVoice(c, out, t, dur, f0, level, word){
+  // a child's "yaaay!" / "woo!": buzzy tone through moving vowel filters
+  const o = c.createOscillator(); o.type = "sawtooth";
+  const vib = c.createOscillator(), vibG = c.createGain(); vib.frequency.value = 5 + Math.random() * 2; vibG.gain.value = f0 * 0.025;
+  vib.connect(vibG); vibG.connect(o.frequency);
+  const rise = word === "woo" ? 1.35 : 1.18;
+  o.frequency.setValueAtTime(f0 * 0.85, t);
+  o.frequency.exponentialRampToValueAtTime(f0 * rise, t + dur * 0.3);
+  o.frequency.exponentialRampToValueAtTime(f0 * 0.95, t + dur);
+  const f1 = c.createBiquadFilter(), f2 = c.createBiquadFilter(), f3 = c.createBiquadFilter();
+  [f1, f2, f3].forEach(f => { f.type = "bandpass"; });
+  f1.Q.value = 6; f2.Q.value = 9; f3.Q.value = 10;
+  if (word === "woo") { // "oo" stays rounded
+    f1.frequency.setValueAtTime(450, t); f2.frequency.setValueAtTime(1100, t); f3.frequency.setValueAtTime(3000, t);
+  } else {             // "y-a-a-y": from ee-like glide, to open "ah", to "ee"
+    f1.frequency.setValueAtTime(400, t); f1.frequency.linearRampToValueAtTime(950, t + 0.12); f1.frequency.linearRampToValueAtTime(950, t + dur * 0.55); f1.frequency.linearRampToValueAtTime(500, t + dur);
+    f2.frequency.setValueAtTime(2800, t); f2.frequency.linearRampToValueAtTime(1700, t + 0.12); f2.frequency.linearRampToValueAtTime(1800, t + dur * 0.55); f2.frequency.linearRampToValueAtTime(2700, t + dur);
+    f3.frequency.setValueAtTime(3600, t);
+  }
+  const g1 = c.createGain(), g2 = c.createGain(), g3 = c.createGain(); g1.gain.value = 1; g2.gain.value = 0.7; g3.gain.value = 0.3;
+  const env = c.createGain();
+  env.gain.setValueAtTime(0.0001, t);
+  env.gain.exponentialRampToValueAtTime(level, t + 0.06);
+  env.gain.setValueAtTime(level, t + dur * 0.7);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(f1); o.connect(f2); o.connect(f3);
+  f1.connect(g1); f2.connect(g2); f3.connect(g3);
+  g1.connect(env); g2.connect(env); g3.connect(env); env.connect(out);
+  o.start(t); vib.start(t); o.stop(t + dur + 0.05); vib.stop(t + dur + 0.05);
+}
+function crowdBed(c, out, t, dur, level){
+  // the "roar" of a happy room under the voices
+  const src = c.createBufferSource(); src.buffer = makeNoise(c); src.loop = true;
+  const bp = c.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1400; bp.Q.value = 0.6;
+  const g = c.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(level, t + 0.2);
+  g.gain.setValueAtTime(level, t + dur * 0.5);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(bp); bp.connect(g); g.connect(out);
+  src.start(t); src.stop(t + dur + 0.05);
+}
+function master(c){
+  const comp = c.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
+  const g = c.createGain(); g.gain.value = 2.2;
+  comp.connect(g); g.connect(c.destination); return comp;
+}
+// short cheer for one correct word
+function cheerSmall(c, t){
+  const out = master(c);
+  applause(c, out, t, 1.1, 7, 0.5);
+  kidVoice(c, out, t + 0.05, 0.75, 520 + Math.random() * 80, 0.12, "yay");
+  kidVoice(c, out, t + 0.12, 0.7, 610 + Math.random() * 80, 0.09, "yay");
+}
+// big cheer when everything is correct
+function cheerBig(c, t){
+  const out = master(c);
+  applause(c, out, t, 3.0, 16, 0.55);
+  crowdBed(c, out, t, 2.6, 0.06);
+  const n = 7;
+  for (let i = 0; i < n; i++) kidVoice(c, out, t + Math.random() * 0.35, 1.2 + Math.random() * 0.7, 420 + Math.random() * 280, 0.095, i % 3 === 2 ? "woo" : "yay");
+}
+
+// one correct word
+function playCorrect(){
+  if (!soundOn()) return; const c = audio(); if (!c) return;
+  const t = c.currentTime + 0.02;
+  if (soundMode === "cheer") { cheerSmall(c, t); return; }
+  [523.25, 659.25, 783.99].forEach((f, i) => tone(c, f, t + i * 0.08, 0.35));
+  tone(c, 1046.5, t + 0.24, 0.45, "sine", 0.12);
+}
+// everything correct: a short fanfare with a sparkle on top
+function playWin(){
+  if (!soundOn()) return; const c = audio(); if (!c) return;
+  const t = c.currentTime + 0.02;
+  if (soundMode === "cheer") { cheerBig(c, t); return; }
+  [[523.25, 0], [659.25, 0.12], [783.99, 0.24], [1046.5, 0.36]].forEach(([f, d]) => tone(c, f, t + d, 0.3, "square", 0.08));
+  [523.25, 659.25, 783.99, 1046.5].forEach(f => tone(c, f, t + 0.5, 0.9, "triangle", 0.12));
+  [1568, 2093, 2637, 3136].forEach((f, i) => tone(c, f, t + 0.55 + i * 0.07, 0.25, "sine", 0.05));
+}
+function syncSoundBtn(){
+  const b = $("#btn-sound");
+  b.textContent = soundMode === "cheer" ? "Sound: Cheers" : soundMode === "chime" ? "Sound: Chimes" : "Sound: Off";
+  b.setAttribute("aria-pressed", String(soundOn()));
+}
+$("#btn-sound").onclick = () => {
+  soundMode = soundMode === "cheer" ? "chime" : soundMode === "chime" ? "off" : "cheer";
+  try { localStorage.setItem("seqboard.sound", soundMode); } catch {}
+  syncSoundBtn(); if (soundOn()) playCorrect();
+};
+syncSoundBtn();
+
+function celebrate(){
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const c = $("#celebrate"); c.textContent = "";
+  const colors = ["#FFFFFF","#111111","#8A8A8A","#D9D9D9"];
+  for (let i = 0; i < 70; i++) {
+    const b = document.createElement("div"); b.className = "bit";
+    b.style.left = Math.random() * 100 + "vw";
+    b.style.background = colors[i % colors.length];
+    b.style.animationDelay = (Math.random() * .5) + "s";
+    b.style.animationDuration = (1.2 + Math.random() * .9) + "s";
+    c.append(b);
+  }
+  setTimeout(() => c.textContent = "", 2800);
+}
+
+/* drag and drop within the one board (pointer events: pens, touch boards, mice)
+   Piece positions are measured once when a drag starts and the drop marker floats
+   above the layout, so nothing reflows while dragging. */
+let drag = null;
+const onBoard = el => el && el.closest ? el.closest("#board") : null;
+function autoScroll(y){
+  const edge = 70;
+  if (y < edge) window.scrollBy(0, -Math.ceil((edge - y) / 4));
+  else if (y > window.innerHeight - edge) window.scrollBy(0, Math.ceil((y - (window.innerHeight - edge)) / 4));
+}
+
+document.addEventListener("pointerdown", e => {
+  const el = e.target.closest && e.target.closest(".piece");
+  if (!el || !onBoard(el) || e.button > 0) return;
+  e.preventDefault();
+  if (drag || bdrag || e.isPrimary === false) return;   // ignore a second finger or palm
+  if (hlMode) {
+    const w = e.target.closest(".w"); if (!w) return;
+    const pid = el.dataset.id, idx = Number(w.dataset.w);
+    game.hl = game.hl || {};
+    const m = game.hl[pid] = game.hl[pid] || {};
+    if (hlColor === "erase" || m[idx] === hlColor) delete m[idx]; else m[idx] = hlColor;
+    w.className = "w" + (w.classList.contains("seq") ? " seq" : "") + (m[idx] ? " hl-" + m[idx] : "");
+    return;
+  }
+  const r = el.getBoundingClientRect();
+  drag = { el, id: el.dataset.id, sx: e.clientX, sy: e.clientY, ox: e.clientX - r.left, oy: e.clientY - r.top, w: r.width, started: false, ghost: null, mark: null, index: -1, pid: e.pointerId };
+  try { el.setPointerCapture(e.pointerId); } catch {}
+});
+
+function startSeqDrag(){
+  const board = $("#board");
+  drag.started = true;
+  const g = drag.el.cloneNode(true);
+  g.classList.add("ghost"); g.classList.remove("ok","bad");
+  g.style.width = drag.w + "px";
+  document.body.append(g); drag.ghost = g;
+  drag.el.classList.add("lifted");
+  board.classList.add("dragging");
+  const br = board.getBoundingClientRect();
+  drag.board = { left: br.left + scrollX, top: br.top + scrollY };
+  drag.snap = $$(".piece", board).filter(p => p !== drag.el).map(p => {
+    const r = p.getBoundingClientRect();
+    return { left: r.left + scrollX, right: r.right + scrollX, top: r.top + scrollY, bottom: r.bottom + scrollY };
+  });
+  drag.mark = document.createElement("div"); drag.mark.className = "drop-mark"; drag.mark.hidden = true;
+  board.append(drag.mark);
+}
+
+document.addEventListener("pointermove", e => {
+  if (!drag || e.pointerId !== drag.pid) return;
+  if (e.pointerType === "mouse" && e.buttons === 0 && drag.started) { endDrag(e, false); return; } // missed mouseup
+  if (!drag.started) {
+    if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 8) return;
+    startSeqDrag();
+  }
+  drag.ghost.style.left = (e.clientX - drag.ox) + "px";
+  drag.ghost.style.top = (e.clientY - drag.oy) + "px";
+  autoScroll(e.clientY);
+  const px = e.clientX + scrollX, py = e.clientY + scrollY, snap = drag.snap;
+  let idx = snap.length;
+  for (let i = 0; i < snap.length; i++) {
+    const r = snap[i];
+    if (py < r.top) { idx = i; break; }
+    if (py <= r.bottom && px < (r.left + r.right) / 2) { idx = i; break; }
+  }
+  drag.index = idx;
+  if (!snap.length) return;
+  const ref = snap[Math.min(idx, snap.length - 1)];
+  const x = idx < snap.length ? ref.left - 9 : ref.right + 3;
+  Object.assign(drag.mark.style, { left: (x - drag.board.left) + "px", top: (ref.top - drag.board.top) + "px", height: (ref.bottom - ref.top) + "px" });
+  drag.mark.hidden = false;
+});
+
+function endDrag(e, cancelled){
+  if (!drag || (e && e.pointerId !== drag.pid)) return;
+  const d = drag; drag = null;
+  $("#board").classList.remove("dragging");
+  if (d.ghost) d.ghost.remove();
+  if (d.mark) d.mark.remove();
+  try { d.el.releasePointerCapture(d.pid); } catch {}
+  if (!d.started) return;
+  d.el.classList.remove("lifted");
+  if (cancelled || d.index < 0) { drawZones(); return; }
+  const i = game.pieces.findIndex(p => p.id === d.id);
+  if (i < 0) { drawZones(); return; }
+  const [pc] = game.pieces.splice(i, 1);
+  game.pieces.splice(d.index, 0, pc);
+  if (d.index !== i) { game.checked = false; setStatus(""); }
+  drawZones();
+}
+document.addEventListener("pointerup", e => endDrag(e, false));
+document.addEventListener("pointercancel", e => endDrag(e, true));
+
+// safety nets: never leave a piece floating if the pointer is lost
+function cancelAllDrags(){ if (drag) endDrag(null, true); if (bdrag) endBdrag(null, true); }
+window.addEventListener("blur", cancelAllDrags);
+document.addEventListener("visibilitychange", () => { if (document.hidden) cancelAllDrags(); });
+document.addEventListener("lostpointercapture", e => {
+  setTimeout(() => {
+    if (drag && drag.pid === e.pointerId) endDrag(null, !drag.started);
+    if (bdrag && bdrag.pid === e.pointerId) endBdrag(null, !bdrag.started);
+  }, 0);
+});
+
+// keyboard: arrow keys move the focused piece earlier or later
+document.addEventListener("keydown", e => {
+  const el = e.target.closest && e.target.closest(".piece");
+  if (!el || !onBoard(el)) return;
+  const dir = (e.key === "ArrowLeft" || e.key === "ArrowUp") ? -1 : (e.key === "ArrowRight" || e.key === "ArrowDown") ? 1 : 0;
+  if (!dir) return;
+  e.preventDefault();
+  const i = game.pieces.findIndex(p => p.id === el.dataset.id), j = i + dir;
+  if (j < 0 || j >= game.pieces.length) return;
+  [game.pieces[i], game.pieces[j]] = [game.pieces[j], game.pieces[i]];
+  game.checked = false; setStatus(""); drawZones();
+  $(`.piece[data-id="${el.dataset.id}"]`).focus();
+});
+
+/* piece colors */
+const PRESETS = [["#FFFFFF","#111111"],["#111111","#FFFFFF"],["#D7141A","#FFFFFF"],["#FFFFFF","#D7141A"],["#6E6E6E","#FFFFFF"],["#E6E6E6","#111111"]];
+let colors = { bg: "#FFFFFF", ink: "#111111" };
+try { colors = { ...colors, ...JSON.parse(localStorage.getItem("seqboard.colors") || "{}") }; } catch {}
+function applyColors(){
+  const r = document.documentElement.style;
+  r.setProperty("--piece-bg", colors.bg); r.setProperty("--piece-ink", colors.ink);
+  $("#c-bg").value = colors.bg.toLowerCase(); $("#c-ink").value = colors.ink.toLowerCase();
+  $$(".swatch").forEach(s => s.setAttribute("aria-pressed", String(s.dataset.bg.toLowerCase() === colors.bg.toLowerCase() && s.dataset.ink.toLowerCase() === colors.ink.toLowerCase())));
+  try { localStorage.setItem("seqboard.colors", JSON.stringify(colors)); } catch {}
+}
+PRESETS.forEach(([bg, ink]) => {
+  const b = document.createElement("button");
+  b.className = "swatch"; b.textContent = "Aa"; b.dataset.bg = bg; b.dataset.ink = ink;
+  b.style.background = bg; b.style.color = ink; b.style.borderColor = ink;
+  b.setAttribute("aria-label", `Background ${bg}, text ${ink}`);
+  b.onclick = () => { colors = { bg, ink }; applyColors(); };
+  $("#swatches").append(b);
+});
+$("#c-bg").addEventListener("input", e => { colors.bg = e.target.value; applyColors(); });
+$("#c-ink").addEventListener("input", e => { colors.ink = e.target.value; applyColors(); });
+$("#c-reset").onclick = () => { colors = { bg: "#FFFFFF", ink: "#111111" }; applyColors(); };
+$("#btn-colors").onclick = () => {
+  const p = $("#colors"); p.hidden = !p.hidden;
+  $("#btn-colors").setAttribute("aria-expanded", String(!p.hidden));
+};
+applyColors();
+
+/* ---------- LIBRARY ---------- */
+function fillSelect(sel, values, labelFn = v => v, keepFirst = true){
+  const first = keepFirst ? sel.querySelector("option") : null;
+  sel.textContent = ""; if (first) sel.append(first);
+  values.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = labelFn(v); sel.append(o); });
+}
+fillSelect($("#f-grade"), GRADES, gradeLabel);
+fillSelect($("#ed-grade"), GRADES, gradeLabel);
+fillSelect($("#g-grade"), GRADES, gradeLabel, false);
+$("#g-grade").value = "3";
+fillSkillLists(false, "");
+
+function refreshSkillFilter(){
+  const sel = $("#f-skill"), cur = sel.value;
+  const used = [...new Set([...SKILLS, ...store.items.map(x => x.skill).filter(Boolean)])];
+  fillSelect(sel, used); sel.value = used.includes(cur) ? cur : "";
+}
+["#f-grade","#f-skill"].forEach(s => $(s).addEventListener("change", renderLibrary));
+$("#f-q").addEventListener("input", renderLibrary);
+
+function renderLibrary(){
+  refreshSkillFilter();
+  const g = $("#f-grade").value, s = $("#f-skill").value, q = $("#f-q").value.trim().toLowerCase();
+  const rows = $("#lib-rows"); rows.textContent = "";
+  const items = store.sorted().filter(x => (!g || x.grade === g) && (!s || x.skill === s) && (!q || (x.title + " " + itemText(x)).toLowerCase().includes(q)));
+  if (!items.length) {
+    const tr = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 6;
+    td.textContent = store.items.length ? "No activities match these filters." : "No activities yet. Create one to get started.";
+    td.className = "note"; tr.append(td); rows.append(tr); return;
+  }
+  items.forEach(x => {
+    const tr = document.createElement("tr");
+    const t = document.createElement("td");
+    const tt = document.createElement("div"); tt.className = "title"; tt.textContent = x.title || "Untitled";
+    const pv = document.createElement("div"); pv.className = "preview"; pv.textContent = itemText(x);
+    t.append(tt, pv);
+    const tg = document.createElement("td"); tg.textContent = gradeLabel(x.grade);
+    const ts = document.createElement("td"); ts.textContent = x.skill;
+    const tn = document.createElement("td"); tn.textContent = x.type === "builder" ? (x.style === "family" ? (x.rows || []).length + " words" : groupRows(x.rows || []).length + " roots") : (x.pieces || []).length + " pieces";
+    const ty = document.createElement("td"); ty.textContent = typeLabel(x);
+    const ta = document.createElement("td"); const ra = document.createElement("div"); ra.className = "row-actions";
+    const bp = btn("Play", "btn primary", () => { loadPassage(x.id); show("play"); });
+    ra.append(bp);
+    if (canEdit) {
+      const be = btn("Edit", "btn", () => openEditor(x.id));
+      const bd = btn("Delete", "btn danger", async () => { if (await askConfirm(`Delete “${x.title || "Untitled"}”? This can’t be undone.`, "Delete")) { try { await store.remove(x.id); toast("Passage deleted"); } catch (e) { toast(saveErrorText(e)); } } });
+      ra.append(be, bd);
+    } ta.append(ra);
+    tr.append(t, ty, tg, ts, tn, ta); rows.append(tr);
+  });
+}
+function typeLabel(x){
+  if (x.type !== "builder") return "Sentence order";
+  if (x.style === "family") return "Word family";
+  return x.showDefs ? "Word builder + definitions" : "Word builder";
+}
+function itemText(x){
+  if (x.type === "builder") return (x.rows || []).map(r => [r.prefix, r.root, r.suffix].filter(v => String(v || "").trim()).join(" + ") + (r.def ? ` (${r.def})` : "")).join("  ·  ");
+  return (x.pieces || []).join(" ");
+}
+function btn(label, cls, fn){ const b = document.createElement("button"); b.className = cls; b.textContent = label; b.onclick = fn; return b; }
+
+/* ---------- EDITOR ---------- */
+const ed = { id: null, createdAt: null, pieces: [], rows: [], type: "sequence" };
+function syncDefModeUi(){
+  const fam = ed.type === "family";
+  $("#bd-defmode-wrap").hidden = !(fam || $("#bd-show-defs").checked);
+}
+$("#bd-show-defs").addEventListener("change", syncDefModeUi);
+function setEdType(t, skillWanted){
+  const wasWord = ed.type === "builder" || ed.type === "family";
+  ed.type = t; $("#ed-type").value = t;
+  const isWord = t === "builder" || t === "family";
+  if (skillWanted !== undefined || wasWord !== isWord || !$("#g-skill").options.length) fillSkillLists(isWord, skillWanted);
+  const b = t === "builder" || t === "family";
+  const fam = t === "family";
+  $("#bd-defs-wrap").hidden = fam;
+  syncDefModeUi();
+  $("#bd-list-help").textContent = fam
+    ? "Each round picks one root word that has at least two rows with definitions, then shows up to 6 of its definitions. Students build the exact word for each definition."
+    : "Each round picks 4 root words at random from this list. Any prefix or suffix listed for a root counts as correct. With definitions turned on, students build the exact word for each definition.";
+  $$(".ed-seq").forEach(el => el.hidden = b);
+  $$(".ed-bld").forEach(el => el.hidden = !b);
+  $("#g-size-wrap").hidden = b;
+  $("#g-count-label").textContent = fam ? "Number of words in the family" : b ? "Number of root words" : "Number of pieces";
+  $("#gen-sub").textContent = b
+    ? (fam ? "Claude picks a root word and builds a family of words from it with definitions. It loads into the word list so you can review it before saving."
+           : "Claude makes a list of root words with prefixes and suffixes that fit them. It loads into the word list so you can review it before saving.")
+    : "Claude writes a passage and splits it into pieces. It loads into the editor so you can review it before saving.";
+  $("#g-affix-wrap").hidden = !b;
+  $("#g-topic-label").textContent = fam ? "Root word (leave blank to let Claude pick)" : "Topic (optional)";
+  $("#g-topic").placeholder = fam ? "e.g. play, help, kind, view" : b ? "e.g. feelings, sports, science words" : "e.g. a trip to the aquarium, the water cycle";
+  if (b) {
+    $("#g-count").innerHTML = fam ? "<option>4</option><option>5</option><option selected>6</option><option>8</option>" : "<option>6</option><option selected>8</option><option>10</option><option>12</option><option>16</option><option>20</option>";
+  } else {
+    $("#g-count").innerHTML = "<option>4</option><option>5</option><option selected>6</option><option>7</option><option>8</option><option>10</option><option>12</option>";
+  }
+}
+$("#ed-type").addEventListener("change", e => setEdType(e.target.value));
+function openEditor(id, type){
+  if (!canEdit) { show("play"); return; }
+  const p = id ? store.get(id) : null;
+  ed.id = p ? p.id : null; ed.createdAt = p ? p.createdAt : null;
+  ed.pieces = p && p.pieces ? [...p.pieces] : [];
+  ed.rows = p && p.rows ? p.rows.map(r => ({ prefix: r.prefix || "", root: r.root || "", suffix: r.suffix || "", def: r.def || "" })) : [];
+  $("#ed-heading").textContent = p ? "Edit activity" : "New activity";
+  $("#ed-title").value = p ? p.title : "";
+  $("#ed-grade").value = p ? p.grade : "";
+  $("#ed-skill-other").value = "";
+  $("#ed-paste").value = ""; $("#parse-note").textContent = ""; $("#ed-err").textContent = "";
+  $("#bd-paste").value = ""; $("#bd-note").textContent = "";
+  const mode = (p && p.bankMode) || "remove";
+  $$('input[name="bankmode"]').forEach(r => r.checked = r.value === mode);
+  $("#bd-hide-empty").checked = p ? p.hideEmpty !== false : true;
+  $("#bd-full-bank").checked = !!(p && p.fullBank);
+  const wo = (p && p.wordOrder) || "random";
+  $$('input[name="wordorder"]').forEach(r => r.checked = r.value === wo);
+  const cm = (p && p.checkMode) || "all";
+  $$('input[name="checkmode"]').forEach(r => r.checked = r.value === cm);
+  $("#bd-show-defs").checked = !!(p && p.showDefs);
+  const dm = (p && p.defMode) || "show";
+  $$('input[name="defmode"]').forEach(r => r.checked = r.value === dm);
+  ed.type = null;
+  setEdType(p ? (p.type === "builder" && p.style === "family" ? "family" : (p.type || "sequence")) : (type || "sequence"), p ? (p.skill || "") : "");
+  renderPieces(); renderRows();
+  show("editor");
+}
+$("#ed-skill").addEventListener("change", e => { $("#ed-skill-other-wrap").hidden = e.target.value !== "__other"; });
+
+function renderPieces(){
+  const ol = $("#ed-pieces"); ol.textContent = "";
+  if (!ed.pieces.length) { const li = document.createElement("li"); li.className = "note"; li.style.display = "block"; li.textContent = "No pieces yet. Paste cells, generate a passage, or add pieces one at a time."; ol.append(li); return; }
+  ed.pieces.forEach((txt, i) => {
+    const li = document.createElement("li");
+    const inp = document.createElement("input"); inp.value = txt; inp.setAttribute("aria-label", "Piece " + (i + 1));
+    inp.addEventListener("input", () => { ed.pieces[i] = inp.value; });
+    const m = document.createElement("div"); m.className = "mini";
+    m.append(
+      mini("↑", "Move up", () => { if (i > 0) { [ed.pieces[i-1], ed.pieces[i]] = [ed.pieces[i], ed.pieces[i-1]]; renderPieces(); } }),
+      mini("↓", "Move down", () => { if (i < ed.pieces.length - 1) { [ed.pieces[i+1], ed.pieces[i]] = [ed.pieces[i], ed.pieces[i+1]]; renderPieces(); } }),
+      mini("×", "Remove", () => { ed.pieces.splice(i, 1); renderPieces(); })
+    );
+    li.append(inp, m); ol.append(li);
+  });
+}
+function mini(t, label, fn){ const b = document.createElement("button"); b.textContent = t; b.setAttribute("aria-label", label); b.onclick = fn; return b; }
+$("#btn-add-piece").onclick = () => { ed.pieces.push(""); renderPieces(); const ins = $$("#ed-pieces input"); ins[ins.length - 1].focus(); };
+
+function parsePaste(raw){
+  const text = raw.replace(/\r\n?/g, "\n");
+  const lines = text.split("\n").filter(l => l.trim() !== "");
+  const hasTabs = text.includes("\t");
+  if (!hasTabs && lines.length === 1) {
+    // single paragraph: split into sentences
+    const parts = lines[0].match(/[^.!?]+[.!?]+["”’')\]]*|[^.!?]+$/g) || [];
+    return parts.map(s => s.trim()).filter(Boolean);
+  }
+  const out = [];
+  lines.forEach(line => line.split("\t").forEach(cell => {
+    let c = cell.trim();
+    if (c.startsWith('"') && c.endsWith('"') && c.length > 1) c = c.slice(1, -1).replace(/""/g, '"');
+    if (c) out.push(c);
+  }));
+  return out;
+}
+$("#btn-parse").onclick = async () => {
+  const pieces = parsePaste($("#ed-paste").value);
+  if (!pieces.length) { $("#parse-note").textContent = "Nothing to use yet. Paste cells into the box first."; return; }
+  if (ed.pieces.some(p => p.trim()) && !(await askConfirm("Replace the current pieces with the pasted cells?", "Replace"))) return;
+  ed.pieces = pieces; renderPieces();
+  $("#parse-note").textContent = `${pieces.length} pieces added.`;
+};
+$("#btn-clear").onclick = async () => { if (await askConfirm("Clear this activity?", "Clear")) openEditor(null, ed.type); };
+
+/* word builder rows */
+function renderRows(){
+  const tb = $("#bd-rows"); tb.textContent = "";
+  if (!ed.rows.length) { const tr = document.createElement("tr"); const td = document.createElement("td"); td.colSpan = 5; td.className = "note"; td.textContent = "No words yet. Paste rows, generate a list, or add rows one at a time."; tr.append(td); tb.append(tr); return; }
+  ed.rows.forEach((r, i) => {
+    const tr = document.createElement("tr");
+    ["prefix","root","suffix","def"].forEach(k => {
+      const td = document.createElement("td"); const inp = document.createElement("input");
+      inp.value = r[k] || ""; inp.setAttribute("aria-label", `${k === "def" ? "definition" : k} for row ${i + 1}`);
+      inp.addEventListener("input", () => { ed.rows[i][k] = inp.value; });
+      td.append(inp); tr.append(td);
+    });
+    const td = document.createElement("td"); const m = document.createElement("div"); m.className = "mini";
+    m.append(mini("×", "Remove row", () => { ed.rows.splice(i, 1); renderRows(); }));
+    td.append(m); tr.append(td); tb.append(tr);
+  });
+}
+function parseRows(raw){
+  const lines = raw.replace(/\r\n?/g, "\n").split("\n").filter(l => l.trim() !== "");
+  const clean = c => { c = (c || "").trim(); if (c.startsWith('"') && c.endsWith('"') && c.length > 1) c = c.slice(1, -1).replace(/""/g, '"'); return c.trim(); };
+  let rows = lines.map(l => { const c = l.split("\t").map(clean); return { prefix: c[0] || "", root: c[1] || "", suffix: c[2] || "", def: c.slice(3).filter(Boolean).join(" ") }; });
+  if (rows.length && /prefix/i.test(rows[0].prefix) && /root|base|word/i.test(rows[0].root)) rows = rows.slice(1);
+  return rows.filter(r => r.root);
+}
+$("#btn-bd-parse").onclick = async () => {
+  const rows = parseRows($("#bd-paste").value);
+  if (!rows.length) { $("#bd-note").textContent = "Nothing to use yet. Paste three columns: prefix, root word, suffix."; return; }
+  if (ed.rows.some(r => r.root.trim()) && !(await askConfirm("Replace the current word list with the pasted rows?", "Replace"))) return;
+  ed.rows = rows; renderRows();
+  $("#bd-note").textContent = `${rows.length} rows added (${groupRows(rows).length} root words).`;
+};
+$("#btn-bd-add").onclick = () => { ed.rows.push({ prefix: "", root: "", suffix: "", def: "" }); renderRows(); const ins = $$("#bd-rows input"); ins[ins.length - 3].focus(); };
+
+async function saveEditor(afterFor){
+  const err = $("#ed-err"); err.textContent = "";
+  const title = $("#ed-title").value.trim();
+  const grade = $("#ed-grade").value;
+  let skill = $("#ed-skill").value;
+  if (skill === "__other") skill = $("#ed-skill-other").value.trim();
+  if (!grade) { err.textContent = "Choose a grade level."; $("#ed-grade").focus(); return null; }
+  if (!skill) { err.textContent = "Choose the skill this activity practices."; $("#ed-skill").focus(); return null; }
+  let record;
+  if (ed.type === "builder" || ed.type === "family") {
+    const rows = ed.rows.map(r => ({ prefix: r.prefix.trim(), root: r.root.trim(), suffix: r.suffix.trim(), def: (r.def || "").trim() })).filter(r => r.root);
+    const style = ed.type === "family" ? "family" : "four";
+    const showDefs = style === "four" && $("#bd-show-defs").checked;
+    const defRoots = new Map();
+    defTargets(rows).forEach(t => defRoots.set(t.root.toLowerCase(), (defRoots.get(t.root.toLowerCase()) || 0) + 1));
+    if (style === "family") {
+      if (![...defRoots.values()].some(n => n >= 2)) { err.textContent = "Add at least one root word with two or more rows that have a prefix or suffix and a definition."; return null; }
+    } else if (showDefs) {
+      if (defRoots.size < 4) { err.textContent = `With definitions on, add definitions for at least 4 different root words (now ${defRoots.size}).`; return null; }
+    } else {
+      const roots = groupRows(rows).length;
+      if (roots < 4) { err.textContent = `Add at least 4 root words that have a prefix or suffix (now ${roots}).`; return null; }
+    }
+    const bankMode = ($('input[name="bankmode"]:checked') || {}).value || "remove";
+    const defMode = (($('input[name="defmode"]:checked') || {}).value) === "after" ? "after" : "show";
+    record = { type: "builder", style, showDefs, defMode, rows, bankMode, hideEmpty: $("#bd-hide-empty").checked, fullBank: $("#bd-full-bank").checked, wordOrder: (($('input[name="wordorder"]:checked') || {}).value) === "list" ? "list" : "random", checkMode: (($('input[name="checkmode"]:checked') || {}).value) || "all", pieces: [], title: title || (style === "family" ? (() => { const rs = [...new Set(rows.map(r => r.root))]; return rs.length === 1 ? "Word family: " + rs[0] : "Word families"; })() : "Word builder") };
+  } else {
+    const pieces = ed.pieces.map(s => s.trim()).filter(Boolean);
+    if (pieces.length < 2) { err.textContent = "Add at least two pieces."; return null; }
+    record = { type: "sequence", pieces, title: title || pieces[0].slice(0, 40) };
+  }
+  try {
+    const id = await store.save({ id: ed.id, createdAt: ed.createdAt, grade, skill, ...record }, afterFor);
+    ed.id = id; toast("Activity saved"); return id;
+  } catch (e) { err.textContent = saveErrorText(e); return null; }
+}
+$("#btn-save").onclick = async () => {
+  const id = await saveEditor(() => ({ view: "library", toast: "Activity saved" }));
+  if (id) show("library");
+};
+$("#btn-save-play").onclick = async () => {
+  const id = await saveEditor(nid => ({ view: "play", id: nid, toast: "Activity saved" }));
+  if (id) { loadPassage(id); show("play"); }
+};
+
+/* ---------- AUTO-GENERATE ---------- */
+let sampleFn = null, genCtl = null;
+(async () => {
+  try { sampleFn = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch { sampleFn = null; }
+  if (!sampleFn) {
+    $("#btn-gen").disabled = true;
+    $("#gen-out").textContent = "Auto-generate works when this page is opened in Claude. You can still paste from a spreadsheet.";
+  }
+})();
+// sync generator defaults from the editor's details
+$("#ed-grade").addEventListener("change", e => { if (e.target.value) $("#g-grade").value = e.target.value; });
+$("#ed-skill").addEventListener("change", e => { const gs = $("#g-skill"); if ([...gs.options].some(o => o.value === e.target.value)) gs.value = e.target.value; });
+
+const SKILL_HINTS = {
+  "Sequence of events": "Tell events in a clear time order using cues such as first, next, then, after that, finally, and time words, so only one order makes sense.",
+  "Sentence structure": "Focus on how clauses and phrases combine; when splitting into parts, capitalization should begin only the first part of each sentence and the ending mark should close only the last part.",
+  "Punctuation": "Keep all punctuation attached to its words exactly as it should appear, so capitals, commas, end marks and quotation marks are the clues for the order.",
+  "Transition words": "Begin most sentences with a transition word or phrase that signals its place in the paragraph.",
+  "Main idea and details": "Open with a clear topic sentence, follow with supporting details that build on each other, and end with a concluding sentence.",
+  "Cause and effect": "Make each event cause the next, using words like because, so, as a result, and therefore.",
+  "Steps in a process": "Describe a how-to process where each step depends on the one before it.",
+  "Story structure": "Include a beginning that sets the scene, a problem, events, and a solution."
+};
+
+const affixRule = a => a === "prefix" ? "Every word must use a prefix only: no suffix. Use an empty string for the suffix."
+  : a === "suffix" ? "Every word must use a suffix only: no prefix. Use an empty string for the prefix."
+  : "Words may use a prefix, a suffix, or both.";
+const affixFits = (a, r) => a === "prefix" ? !!r.prefix && !r.suffix : a === "suffix" ? !!r.suffix && !r.prefix : !!(r.prefix || r.suffix);
+async function genBuilder(){
+  const grade = $("#g-grade").value, topic = $("#g-topic").value.trim(), n = Number($("#g-count").value);
+  const affix = $("#g-affix").value;
+  const wantDefs = ed.type === "family" || $("#bd-show-defs").checked;
+  if (wantDefs) return genDefs(grade, topic, n, ed.type === "family", affix);
+  const prompt =
+`You create word-study activities for a classroom game where students attach prefixes and suffixes to root words.
+
+Make a list of exactly ${n} different root words for ${gradeLabel(grade)} students${topic ? ` connected to this topic: ${topic}` : ""}.
+For each root, list the common ${affix === "prefix" ? "prefixes" : affix === "suffix" ? "suffixes" : "prefixes and suffixes"} that attach to it to make real English words a ${gradeLabel(grade)} student would know.${affix === "prefix" ? " Leave every suffixes list empty." : affix === "suffix" ? " Leave every prefixes list empty." : ""}
+Write only the affix itself with no hyphens, for example "un", "re", "pre", "ful", "less", "ness", "ly", "er".
+Every root needs at least one ${affix === "prefix" ? "prefix" : affix === "suffix" ? "suffix" : "prefix or suffix"}. Each listed prefix + root and each root + listed suffix must be a real word.
+Prefer roots where the suffix attaches without spelling changes, and prefer affixes shared by several roots so students must choose.
+
+Reply with only JSON in this shape:
+{"title": "short title", "rows": [{"root": "help", "prefixes": [], "suffixes": ["ful", "less", "er"]}]}`;
+  genCtl = new AbortController();
+  $("#btn-gen").disabled = true; $("#btn-gen-stop").hidden = false;
+  const out = $("#gen-out"); out.className = "gen-out"; out.textContent = "Making a word list… this can take up to a minute.";
+  try {
+    const data = await sampleFn.json(prompt, { signal: genCtl.signal, cache: false });
+    const list = Array.isArray(data && data.rows) ? data.rows : [];
+    const rows = list.map(r => ({
+      prefix: affix === "suffix" ? "" : (Array.isArray(r.prefixes) ? r.prefixes : []).map(x => String(x).replace(/-/g, "").trim()).filter(Boolean).join(", "),
+      root: String(r.root || "").trim(),
+      suffix: affix === "prefix" ? "" : (Array.isArray(r.suffixes) ? r.suffixes : []).map(x => String(x).replace(/-/g, "").trim()).filter(Boolean).join(", ")
+    })).filter(r => r.root && (r.prefix || r.suffix));
+    if (rows.length < 2) throw { code: "shape" };
+    if (ed.rows.some(r => r.root.trim()) && !(await askConfirm("Replace the current word list with the generated one?", "Replace"))) { out.textContent = "Kept your current word list."; return; }
+    ed.rows = rows.map(r => ({ ...r, def: "" })); renderRows();
+    if (data.title) $("#ed-title").value = String(data.title);
+    $("#ed-grade").value = grade;
+    if (!$("#ed-skill").value) $("#ed-skill").value = "Prefixes and suffixes";
+    out.textContent = `Loaded ${rows.length} root words. Review them, then save.`;
+  } catch (e) {
+    const code = e && e.code;
+    out.className = code === "cancelled" ? "gen-out" : "gen-out err";
+    out.textContent = code === "cancelled" ? "Stopped." :
+      code === "not_granted" ? "Auto-generate needs your permission. Click Generate again to allow it." :
+      code === "rate_limited" ? "Too many requests right now. Wait a minute and try again." :
+      "The word list didn’t come back in a usable form. Try again or change the settings." + (code && code !== "shape" ? ` (error: ${code})` : "");
+  } finally {
+    $("#btn-gen").disabled = !sampleFn; $("#btn-gen-stop").hidden = true; genCtl = null;
+  }
+}
+async function genDefs(grade, topic, n, family, affix){
+  const root = family ? topic.trim() : "";
+  const rule = affixRule(affix);
+  const prompt = family
+? `You create word-study activities for a classroom game. Students get one root word and build new words from it, matching each word to its definition.
+
+${root ? `The root word is "${root}". Use exactly this root in every row, spelled exactly "${root}".` : `Choose one common root word that ${gradeLabel(grade)} students know.`}
+Give ${n} different real words built from that root, each with a short kid-friendly definition (under 12 words). If fewer than ${n} real, grade-appropriate words exist, give as many as you can (at least 2) rather than inventing words.
+${rule}
+Write only the affix itself with no hyphens, for example "re", "un", "pre", "dis", "mis". Each definition must fit only one of the words.
+
+Reply with only JSON in this shape:
+{"title": "short title", "rows": [{"prefix": "re", "root": "${root || "play"}", "suffix": "", "definition": "to ${root || "play"} again"}]}`
+: `You create word-study activities for a classroom game. Students attach word parts to root words to build the word that matches a definition.
+
+Make exactly ${n} rows for ${gradeLabel(grade)} students${topic ? ` connected to this topic: ${topic}` : ""}, using at least 6 different root words (2 or 3 words per root is good).
+Each row is one real word built from a root, plus a short kid-friendly definition (under 12 words).
+${rule}
+Write only the affix itself with no hyphens. Each definition must fit only one word.
+
+Reply with only JSON in this shape:
+{"title": "short title", "rows": [{"prefix": "un", "root": "kind", "suffix": "", "definition": "not nice or caring"}]}`;
+  genCtl = new AbortController();
+  $("#btn-gen").disabled = true; $("#btn-gen-stop").hidden = false;
+  const out = $("#gen-out"); out.className = "gen-out"; out.textContent = "Making words and definitions… this can take up to a minute.";
+  try {
+    const data = await sampleFn.json(prompt, { signal: genCtl.signal, cache: false });
+    const list = Array.isArray(data && data.rows) ? data.rows : [];
+    const clean = x => String(x == null ? "" : x).replace(/-/g, "").trim();
+    let rows = list.map(r => ({ prefix: clean(r.prefix), root: root || String(r.root || "").trim(), suffix: clean(r.suffix), def: String(r.definition || r.def || "").trim() }))
+      .filter(r => r.root && r.def && affixFits(affix, r));
+    if (family && !root && rows.length) { const first = rows[0].root.toLowerCase(); rows = rows.filter(r => r.root.toLowerCase() === first); }
+    const seen = new Set(); rows = rows.filter(r => { const k = (r.prefix + "|" + r.root + "|" + r.suffix).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; });
+    if (rows.length < 2) throw { code: "shape" };
+    if (ed.rows.some(r => r.root.trim()) && !(await askConfirm("Replace the current word list with the generated one?", "Replace"))) { out.textContent = "Kept your current word list."; return; }
+    ed.rows = rows; renderRows();
+    if (data.title) $("#ed-title").value = String(data.title);
+    $("#ed-grade").value = grade;
+    if (!$("#ed-skill").value) $("#ed-skill").value = "Prefixes and suffixes";
+    out.textContent = `Loaded ${rows.length} words with definitions. Review them, then save.`;
+  } catch (e) {
+    const code = e && e.code;
+    out.className = code === "cancelled" ? "gen-out" : "gen-out err";
+    out.textContent = code === "cancelled" ? "Stopped." :
+      code === "not_granted" ? "Auto-generate needs your permission. Click Generate again to allow it." :
+      code === "rate_limited" ? "Too many requests right now. Wait a minute and try again." :
+      (family && root ? `Couldn’t make enough ${affix === "prefix" ? "prefix " : affix === "suffix" ? "suffix " : ""}words from “${root}”. Try again, or pick a different root word or option.` : "The words didn’t come back in a usable form. Try again or change the settings.") + (code && code !== "shape" ? ` (error: ${code})` : "");
+  } finally {
+    $("#btn-gen").disabled = !sampleFn; $("#btn-gen-stop").hidden = true; genCtl = null;
+  }
+}
+$("#btn-gen").onclick = async () => {
+  if (!sampleFn) return;
+  if (ed.type === "builder" || ed.type === "family") return genBuilder();
+  const grade = $("#g-grade").value, skill = $("#g-skill").value, topic = $("#g-topic").value.trim();
+  const n = Number($("#g-count").value), size = $("#g-size").value;
+  const sizeText = size === "sentences" ? "Each piece must be one complete sentence."
+    : size === "fragments" ? "Split sentences into meaningful parts (phrases or clauses, at least 3 words each); a piece is never a whole sentence unless the sentence is very short."
+    : "Use a mix: some pieces are whole sentences and some are parts of a sentence (phrases or clauses of at least 3 words).";
+  const prompt =
+`You create reading activities for a classroom game. Students see pieces of a paragraph in a random order and must drag them into the correct order.
+
+Write one original paragraph for ${gradeLabel(grade)} students that practices this skill: ${skill}.
+${SKILL_HINTS[skill] || ""}
+Topic: ${topic || "any engaging, age-appropriate topic"}.
+Use vocabulary and sentence length suited to ${gradeLabel(grade)}.
+Split the paragraph into exactly ${n} pieces in the correct order. ${sizeText}
+Every piece must have exactly one correct position; avoid pieces that could be swapped and still make sense.
+Joining the pieces with single spaces must reproduce the paragraph exactly.
+
+Reply with only JSON in this shape:
+{"title": "short title", "pieces": ["piece 1", "piece 2"]}`;
+  genCtl = new AbortController();
+  $("#btn-gen").disabled = true; $("#btn-gen-stop").hidden = false;
+  const out = $("#gen-out"); out.className = "gen-out"; out.textContent = "Writing a passage… this can take up to a minute.";
+  try {
+    const data = await sampleFn.json(prompt, { signal: genCtl.signal, cache: false });
+    const pieces = Array.isArray(data && data.pieces) ? data.pieces.map(s => String(s).trim()).filter(Boolean) : [];
+    if (pieces.length < 2) throw { code: "shape" };
+    if (ed.pieces.some(p => p.trim()) && !(await askConfirm("Replace the current pieces with the generated passage?", "Replace"))) { out.textContent = "Kept your current pieces."; return; }
+    ed.pieces = pieces;
+    if (data.title) $("#ed-title").value = String(data.title);
+    $("#ed-grade").value = grade;
+    $("#ed-skill").value = skill; $("#ed-skill-other-wrap").hidden = true;
+    renderPieces();
+    out.textContent = `Loaded ${pieces.length} pieces. Review them, then save.`;
+  } catch (e) {
+    const code = e && e.code;
+    out.className = "gen-out err";
+    out.textContent = code === "cancelled" ? "Stopped." :
+      code === "not_granted" ? "Auto-generate needs your permission. Click Generate again to allow it." :
+      code === "rate_limited" ? "Too many requests right now. Wait a minute and try again." :
+      "The passage didn’t come back in a usable form. Try again or change the settings." + (code && code !== "shape" ? ` (error: ${code})` : "");
+    if (code === "cancelled") out.className = "gen-out";
+  } finally {
+    $("#btn-gen").disabled = !sampleFn; $("#btn-gen-stop").hidden = true; genCtl = null;
+  }
+};
+$("#btn-gen-stop").onclick = () => genCtl && genCtl.abort();
+
+/* ---------- WORD BUILDER GAME ---------- */
+const bld = { groups: [], roots: [], slots: [], bank: { prefix: [], suffix: [] }, pool: { prefix: [], suffix: [] }, mode: "remove", tries: 1, sel: null, solved: false, pid: null, ov: {}, cursor: {}, done: [], match: [] };
+const playingBuilder = () => { const cur = store.get(game.passageId); return cur && cur.type === "builder" ? cur : null; };
+let tileSeq = 0; const tid = () => "t" + (++tileSeq);
+function splitCell(c){ return String(c == null ? "" : c).split(/[,;\/|]/).map(x => x.trim().replace(/^[-\s]+|[-\s]+$/g, "")).filter(Boolean); }
+function groupRows(rows){
+  const map = new Map();
+  (rows || []).forEach(r => {
+    const root = String(r.root || "").trim(); if (!root) return;
+    const k = root.toLowerCase();
+    if (!map.has(k)) map.set(k, { root, P: new Set(), S: new Set() });
+    const g = map.get(k);
+    splitCell(r.prefix).forEach(x => g.P.add(x.toLowerCase()));
+    splitCell(r.suffix).forEach(x => g.S.add(x.toLowerCase()));
+  });
+  return [...map.values()].filter(g => g.P.size || g.S.size);
+}
+function shuffleArr(arr){ const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+const pickRandom = (arr, n) => shuffleArr(arr).slice(0, n);
+
+// rows with a definition become exact targets (one specific word each)
+function defTargets(rows){
+  return (rows || []).filter(r => String(r.root || "").trim() && String(r.def || "").trim() && (splitCell(r.prefix).length || splitCell(r.suffix).length))
+    .map(r => ({ root: String(r.root).trim(), P: new Set(splitCell(r.prefix).map(x => x.toLowerCase())), S: new Set(splitCell(r.suffix).map(x => x.toLowerCase())), def: String(r.def).trim(), exact: true }));
+}
+// take n items starting at the list cursor, wrapping around; advances the cursor
+function takeInOrder(list, n, key){
+  const len = list.length; if (!len) return [];
+  let start = (bld.cursor[key] || 0) % len;
+  const out = list.slice(start, start + n);
+  if (out.length < n && len > n) out.push(...list.slice(0, n - out.length));
+  bld.cursor[key] = (start + Math.min(n, len)) % len;
+  const first = start + 1, last = Math.min(start + out.length, len);
+  bld.progress = last >= first && out.length === last - first + 1 ? `Words ${first}–${last} of ${len}` : `Words ${first}–${len} and 1–${out.length - (len - start)} of ${len}`;
+  return out;
+}
+function pickTargets(p){
+  const style = p.style === "family" ? "family" : "four";
+  const ordered = bld.wordOrder === "list";
+  bld.progress = "";
+  if (style === "four" && !p.showDefs) return ordered ? takeInOrder(bld.groups, Math.min(4, bld.groups.length), "groups") : pickRandom(bld.groups, Math.min(4, bld.groups.length));
+  const all = defTargets(p.rows);
+  // every defined word for a root is a possible answer when definitions are hidden
+  const byRootAll = new Map();
+  all.forEach(t => { const k = t.root.toLowerCase(); if (!byRootAll.has(k)) byRootAll.set(k, []); byRootAll.get(k).push(t); });
+  bld.byRootAll = byRootAll;
+  const withCands = list => list.map(t => ({ ...t, orig: t, cands: bld.defMode === "after" ? byRootAll.get(t.root.toLowerCase()) : [t] }));
+  if (style === "family") {
+    const byRoot = new Map();
+    all.forEach(t => { const k = t.root.toLowerCase(); if (!byRoot.has(k)) byRoot.set(k, []); byRoot.get(k).push(t); });
+    let fams = [...byRoot.values()].filter(a => a.length >= 2);
+    if (!fams.length) return [];
+    if (ordered) {
+      // walk each family in list order, 6 words at a time, then move to the next family
+      let f = (bld.cursor.fam || 0) % fams.length, w = bld.cursor.famWord || 0;
+      if (w >= fams[f].length) { f = (f + 1) % fams.length; w = 0; }
+      const fam = fams[f], chunk = fam.slice(w, w + 6);
+      bld.familyKey = fam[0].root.toLowerCase(); bld.familyRoot = fam[0].root;
+      bld.progress = `${fam[0].root}: words ${w + 1}–${w + chunk.length} of ${fam.length}` + (fams.length > 1 ? ` (family ${f + 1} of ${fams.length})` : "");
+      if (w + 6 >= fam.length) { bld.cursor.fam = (f + 1) % fams.length; bld.cursor.famWord = 0; }
+      else { bld.cursor.fam = f; bld.cursor.famWord = w + 6; }
+      return withCands(chunk);
+    }
+    if (fams.length > 1 && bld.familyKey) fams = fams.filter(a => a[0].root.toLowerCase() !== bld.familyKey);
+    const fam = fams[Math.floor(Math.random() * fams.length)];
+    bld.familyKey = fam[0].root.toLowerCase(); bld.familyRoot = fam[0].root;
+    return withCands(pickRandom(fam, Math.min(6, fam.length)));
+  }
+  const seen = new Set(), out = [];
+  if (ordered) {
+    // next 4 rows in list order with different root words
+    const len = all.length; let i = (bld.cursor.rows || 0) % (len || 1), steps = 0, firstIdx = i, lastIdx = i;
+    while (out.length < 4 && steps < len) {
+      const t = all[i], k = t.root.toLowerCase();
+      if (!seen.has(k)) { seen.add(k); out.push(t); lastIdx = i; }
+      i = (i + 1) % len; steps++;
+    }
+    bld.cursor.rows = (lastIdx + 1) % (len || 1);
+    bld.progress = len ? `Words ${firstIdx + 1}–${lastIdx + 1} of ${len}` : "";
+    if (lastIdx < firstIdx) bld.progress = `Words ${firstIdx + 1}–${len} and 1–${lastIdx + 1} of ${len}`;
+    return withCands(out);
+  }
+  shuffleArr(all).forEach(t => { const k = t.root.toLowerCase(); if (!seen.has(k) && out.length < 4) { seen.add(k); out.push(t); } });
+  return withCands(out);
+}
+function loadBuilder(p){
+  bld.pid = p.id;
+  bld.style = p.style === "family" ? "family" : "four";
+  bld.groups = groupRows(p.rows);
+  bld.mode = p.bankMode || "remove";
+  bld.hideEmpty = p.hideEmpty !== false;
+  bld.fullBank = !!p.fullBank;
+  if (bld.ovFor !== p.id) { bld.ov = {}; bld.ovFor = p.id; bld.cursor = {}; }
+  bld.cursor = bld.cursor || {};
+  bld.wordOrder = bld.ov.wordOrder || (p.wordOrder === "list" ? "list" : "random");
+  bld.checkMode = bld.ov.checkMode || (p.checkMode === "each" ? "each" : "all");
+  bld.hasDefs = bld.style === "family" || !!p.showDefs;
+  bld.defMode = bld.ov.defMode || (p.defMode === "after" ? "after" : "show");
+  // pool keeps the order the pieces first appear in the word list
+  const inOrder = key => [...new Set((p.rows || []).flatMap(r => splitCell(r[key]).map(x => x.toLowerCase())))];
+  bld.pool.prefix = inOrder("prefix");
+  bld.pool.suffix = inOrder("suffix");
+  bld.roots = pickTargets(p);
+  bld.tries = 1;
+  resetBuilder();
+}
+function neededFor(kind){ const key = kind === "prefix" ? "P" : "S"; return [...new Set(bld.roots.flatMap(g => [...g[key]]))]; }
+function resetBuilder(){
+  bld.slots = bld.roots.map(() => ({ prefix: null, suffix: null }));
+  bld.sel = null; bld.solved = false; bld.done = bld.roots.map(() => false); bld.match = bld.roots.map(() => null); bld.busy = false;
+  ["prefix","suffix"].forEach(kind => {
+    const key = kind === "prefix" ? "P" : "S";
+    const counts = new Map();
+    bld.roots.forEach(g => g[key].forEach(a => counts.set(a, (counts.get(a) || 0) + 1)));
+    const tiles = [];
+    counts.forEach((c, a) => { const k = bld.mode === "keep" ? 1 : c; for (let i = 0; i < k; i++) tiles.push(a); });
+    if (bld.fullBank) { bld.bank[kind] = bld.pool[kind].map(text => ({ id: tid(), text })); return; }
+    const extra = pickRandom(bld.pool[kind].filter(a => !counts.has(a)), 2);
+    bld.bank[kind] = shuffleArr([...tiles, ...extra]).map(text => ({ id: tid(), text }));
+  });
+}
+function addReplacement(kind){
+  const inBank = new Set(bld.bank[kind].map(t => t.text));
+  const useful = neededFor(kind).filter(a => !inBank.has(a));
+  const fresh = bld.pool[kind].filter(a => !inBank.has(a));
+  const from = useful.length ? useful : fresh.length ? fresh : bld.pool[kind];
+  if (!from.length) return;
+  bld.bank[kind].push({ id: tid(), text: from[Math.floor(Math.random() * from.length)] });
+}
+function takeSrc(src){
+  if (src.from === "bank") {
+    const list = bld.bank[src.kind], i = list.findIndex(t => t.id === src.id); if (i < 0) return null;
+    const t = list[i];
+    if (bld.mode !== "keep" && !bld.fullBank) { list.splice(i, 1); if (bld.mode === "replace") addReplacement(src.kind); }
+    return { id: tid(), text: t.text };
+  }
+  const t = bld.slots[src.i][src.kind]; bld.slots[src.i][src.kind] = null; return t;
+}
+function toBank(kind, t){
+  if (!t || bld.mode === "keep" || bld.fullBank) return;
+  bld.bank[kind].push({ id: tid(), text: t.text });
+}
+function moveTile(src, dest){
+  if (bld.solved || bld.busy) return;
+  if (dest.to === "slot" && bld.done[dest.i]) return;
+  if (dest.to === "bank") { if (src.from === "bank") return; toBank(src.kind, takeSrc(src)); }
+  else {
+    if (src.from === "slot" && src.i === dest.i) return;
+    const old = bld.slots[dest.i][src.kind];
+    const t = takeSrc(src); if (!t) { drawBuilder(); return; }
+    bld.slots[dest.i][src.kind] = t;
+    if (old) { if (src.from === "slot") bld.slots[src.i][src.kind] = old; else toBank(src.kind, old); }
+  }
+  bld.sel = null; setStatus(""); drawBuilder();
+  if (dest.to === "slot" && bld.checkMode === "each") checkOne(dest.i, src.kind);
+}
+function rowFits(c, s){
+  const preOk = c.P.size ? !!s.prefix && c.P.has(s.prefix.text) : !s.prefix;
+  const sufOk = c.S.size ? !!s.suffix && c.S.has(s.suffix.text) : !s.suffix;
+  return preOk && sufOk;
+}
+// returns the matching answer row (exact targets), true (open targets), or null
+function findMatch(i, claimed){
+  const g = bld.roots[i], s = bld.slots[i];
+  if (!(s.prefix || s.suffix)) return null;
+  if (g.exact) return (g.cands || [g]).find(c => rowFits(c, s) && !claimed.has(c)) || null;
+  return (!s.prefix || g.P.has(s.prefix.text)) && (!s.suffix || g.S.has(s.suffix.text)) ? true : null;
+}
+function claimedNow(except){ return new Set(bld.match.filter((m, k) => k !== except && m && m !== true)); }
+function wordOk(i){ return !!findMatch(i, claimedNow(i)); }
+const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+function animateJoin(indices){
+  return new Promise(res => {
+    const cards = indices.map(i => $(`#roots .rootcard[data-i="${i}"]`)).filter(Boolean);
+    if (calm() || !cards.length) { res(); return; }
+    bld.busy = true;
+    cards.forEach(c => c.classList.add("joining"));
+    setTimeout(() => { bld.busy = false; res(); }, 700);
+  });
+}
+async function checkOne(i, kind){
+  const g = bld.roots[i], s = bld.slots[i];
+  const claimed = claimedNow(i);
+  const m = findMatch(i, claimed);
+  if (g.exact && !m) {
+    // the placed piece fits a word that still needs its other part: wait
+    const otherKind = kind === "prefix" ? "suffix" : "prefix";
+    const waiting = (g.cands || [g]).some(c => !claimed.has(c) && s[kind] && (kind === "prefix" ? c.P : c.S).has(s[kind].text)
+      && (otherKind === "prefix" ? c.P : c.S).size > 0 && !s[otherKind]
+      && (!s[otherKind] || (otherKind === "prefix" ? c.P : c.S).has(s[otherKind].text)));
+    if (waiting) return;
+  }
+  if (m) {
+    await animateJoin([i]);
+    bld.match[i] = m; bld.done[i] = true; drawBuilder();
+    if (bld.done.every(Boolean)) { bld.solved = true; setStatus("Correct! Every word is built.", "win"); celebrate(); playWin(); }
+    else { setStatus("Nice! That word is correct.", "win"); playCorrect(); }
+    return;
+  }
+  // wrong: shake the card and send the piece back without showing the answer
+  const card = $(`#roots .rootcard[data-i="${i}"]`);
+  bld.busy = true;
+  if (card && !calm()) card.classList.add("shake");
+  setTimeout(() => {
+    bld.busy = false;
+    const t = bld.slots[i][kind]; bld.slots[i][kind] = null;
+    toBank(kind, t);
+    drawBuilder(); setStatus("Not quite. Try a different piece.", "miss");
+  }, calm() ? 50 : 480);
+}
+const sameSrc = (a, b) => a && b && a.from === b.from && a.kind === b.kind && (a.from === "bank" ? a.id === b.id : a.i === b.i);
+// join prefix + root + suffix with common spelling rules
+function joinWord(pre, root, suf){
+  let w = root;
+  if (suf) {
+    const r = root.toLowerCase(), sx = suf.toLowerCase();
+    const vowelStart = /^[aeiou]/.test(sx);
+    const oneSyllable = (r.match(/[aeiouy]+/g) || []).length === 1;
+    if (/[^aeiou]y$/.test(r) && !/^i/.test(sx)) w = root.slice(0, -1) + "i";
+    else if (/e$/.test(r) && /^e/.test(sx)) w = root.slice(0, -1);
+    else if (/[^aeiou]e$/.test(r) && vowelStart) w = root.slice(0, -1);
+    else if (vowelStart && oneSyllable && /[^aeiou][aeiou][^aeiouwxy]$/.test(r)) w = root + root.slice(-1);
+    w += suf;
+  }
+  return (pre || "") + w;
+}
+function tileEl(kind, t, src){
+  const d = document.createElement("div");
+  d.className = "tile " + kind + (sameSrc(bld.sel, src) ? " sel" : "");
+  d.textContent = kind === "prefix" ? t.text + "-" : "-" + t.text;
+  d.dataset.from = src.from; d.dataset.kind = kind;
+  if (src.from === "bank") d.dataset.id = src.id; else d.dataset.i = src.i;
+  d.tabIndex = 0; d.setAttribute("role", "button");
+  d.setAttribute("aria-label", (kind === "prefix" ? "Prefix " : "Suffix ") + t.text + (src.from === "bank" ? ", in bank" : ", on root word " + bld.roots[src.i].root));
+  return d;
+}
+function drawBuilder(){
+  $("#btn-done").hidden = bld.checkMode === "each";
+  $("#btn-bcheck").setAttribute("aria-pressed", String(bld.checkMode === "each"));
+  $("#btn-bdefs").hidden = !bld.hasDefs;
+  $("#btn-bdefs").setAttribute("aria-pressed", String(bld.defMode !== "after"));
+  $("#btn-border").setAttribute("aria-pressed", String(bld.wordOrder === "list"));
+  $("#bld-progress").hidden = !(bld.wordOrder === "list" && bld.progress);
+  $("#bld-progress").textContent = bld.progress || "";
+  ["prefix","suffix"].forEach(kind => {
+    const b = $("#bank-" + kind); b.textContent = "";
+    bld.bank[kind].forEach(t => b.append(tileEl(kind, t, { from: "bank", kind, id: t.id })));
+    if (!bld.bank[kind].length) { const n = document.createElement("span"); n.className = "empty-note"; n.textContent = "Empty"; b.append(n); }
+    const returning = bld.sel && bld.sel.kind === kind && bld.sel.from === "slot";
+    b.closest(".bank-col").hidden = bld.hideEmpty && !bld.bank[kind].length && !returning;
+  });
+  // if a kind isn't used at all this round, hide its empty spots on the root cards too
+  const unused = { prefix: false, suffix: false };
+  ["prefix","suffix"].forEach(kind => { unused[kind] = bld.hideEmpty && !bld.bank[kind].length && !bld.slots.some(s => s[kind]); });
+  const R = $("#roots"); R.textContent = "";
+  R.classList.toggle("two-col", bld.style === "family" && bld.roots.length > 4);
+  if (bld.style === "family" && bld.familyRoot) {
+    const fb = document.createElement("div"); fb.className = "family-root";
+    fb.append("Root word: "); const b = document.createElement("b"); b.textContent = bld.familyRoot; fb.append(b);
+    fb.append(document.createElement("br")); const sm = document.createElement("span"); sm.style.fontSize = ".75em"; sm.style.fontWeight = "400";
+    sm.textContent = bld.defMode === "after" ? "Build a different word on each card. Its meaning appears when it’s correct." : "Build the word that matches each meaning."; fb.append(sm);
+    R.append(fb);
+  }
+  if (!bld.roots.length) { const n = document.createElement("div"); n.className = "family-root"; n.textContent = "This activity needs rows with definitions. Edit it to add them."; R.append(n); }
+  bld.roots.forEach((g, i) => {
+    const card = document.createElement("div"); card.className = "rootcard" + (bld.solved || bld.done[i] ? " ok" : ""); card.dataset.i = i;
+    if (bld.solved || bld.done[i]) {
+      const s = bld.slots[i], pre = s.prefix ? s.prefix.text : "", suf = s.suffix ? s.suffix.text : "";
+      const made = document.createElement("div"); made.className = "made";
+      const wd = document.createElement("div"); wd.className = "word"; wd.textContent = joinWord(pre, g.root, suf);
+      const pt = document.createElement("div"); pt.className = "parts"; pt.textContent = [pre, g.root, suf].filter(Boolean).join(" + ");
+      made.append(wd, pt);
+      const shownDef = bld.match[i] && bld.match[i] !== true ? bld.match[i].def : g.def;
+      if (shownDef) { const df = document.createElement("div"); df.className = "def"; df.textContent = shownDef; made.append(df); }
+      card.append(made);
+      card.setAttribute("aria-label", `Correct: ${wd.textContent}`);
+      R.append(card); return;
+    }
+    const mk = kind => {
+      const sl = document.createElement("div"); sl.className = "slot " + kind; sl.dataset.kind = kind; sl.dataset.i = i;
+      const t = bld.slots[i][kind];
+      if (!t && unused[kind]) sl.hidden = true;
+      if (!t) sl.classList.add("empty-slot");
+      if (t) { sl.classList.add("filled"); sl.append(tileEl(kind, t, { from: "slot", kind, i })); }
+      else { sl.textContent = kind; sl.tabIndex = 0; sl.setAttribute("role", "button"); sl.setAttribute("aria-label", `Empty ${kind} spot for ${g.root}`); }
+      return sl;
+    };
+    const rt = document.createElement("div"); rt.className = "root"; rt.textContent = g.root;
+    const ps = mk("prefix"), ss = mk("suffix");
+    const plus = hideWith => { const x = document.createElement("span"); x.className = "plus"; x.textContent = "+"; x.setAttribute("aria-hidden", "true"); x.hidden = hideWith.hidden; return x; };
+    if (g.def && bld.defMode !== "after") { const df = document.createElement("div"); df.className = "def"; df.textContent = g.def; card.append(df); }
+    const row = document.createElement("div"); row.className = "buildrow";
+    row.append(ps, plus(ps), rt, plus(ss), ss);
+    card.append(row);
+    R.append(card);
+  });
+}
+function srcOf(el){ return el.dataset.from === "bank" ? { from: "bank", kind: el.dataset.kind, id: el.dataset.id } : { from: "slot", kind: el.dataset.kind, i: Number(el.dataset.i) }; }
+function destOf(el, kind){
+  if (!el) return null;
+  const sl = el.closest(".slot"); if (sl && sl.closest("#builder") && sl.dataset.kind === kind) return { to: "slot", i: Number(sl.dataset.i) };
+  const bk = el.closest(".abank, .bank-col"); if (bk && bk.closest("#builder")) { const ab = bk.classList.contains("abank") ? bk : $(".abank", bk); if (ab && ab.dataset.kind === kind) return { to: "bank", el: ab }; }
+  return null;
+}
+let bdrag = null;
+document.addEventListener("pointerdown", e => {
+  if (!e.target.closest || !e.target.closest("#builder") || e.button > 0) return;
+  const tile = e.target.closest(".tile");
+  e.preventDefault();
+  if (bdrag || drag || e.isPrimary === false) return;   // ignore a second finger or palm
+  if (tile) {
+    const r = tile.getBoundingClientRect();
+    bdrag = { el: tile, src: srcOf(tile), sx: e.clientX, sy: e.clientY, ox: e.clientX - r.left, oy: e.clientY - r.top, started: false, ghost: null, over: null, pid: e.pointerId };
+    try { tile.setPointerCapture(e.pointerId); } catch {}
+    return;
+  }
+  // tap on an empty slot or a bank while something is selected
+  if (bld.sel) { const d = destOf(e.target, bld.sel.kind); if (d) moveTile(bld.sel, d); }
+});
+document.addEventListener("pointermove", e => {
+  if (!bdrag || e.pointerId !== bdrag.pid) return;
+  if (e.pointerType === "mouse" && e.buttons === 0 && bdrag.started) { endBdrag(e, false); return; }
+  if (!bdrag.started) {
+    if (Math.hypot(e.clientX - bdrag.sx, e.clientY - bdrag.sy) < 8) return;
+    bdrag.started = true;
+    const g = bdrag.el.cloneNode(true); g.classList.add("ghost"); g.classList.remove("sel");
+    document.body.append(g); bdrag.ghost = g; bdrag.el.classList.add("lifted");
+    if (bdrag.src.from === "slot") { const col = $("#bank-" + bdrag.src.kind).closest(".bank-col"); col.hidden = false; }
+  }
+  bdrag.ghost.style.left = (e.clientX - bdrag.ox) + "px";
+  bdrag.ghost.style.top = (e.clientY - bdrag.oy) + "px";
+  autoScroll(e.clientY);
+  const d = destOf(document.elementFromPoint(e.clientX, e.clientY), bdrag.src.kind);
+  const overEl = d ? (d.to === "bank" ? d.el : $(`#roots .slot.${bdrag.src.kind}[data-i="${d.i}"]`)) : null;
+  if (bdrag.over && bdrag.over !== overEl) bdrag.over.classList.remove("over");
+  if (overEl) overEl.classList.add("over");
+  bdrag.over = overEl; bdrag.dest = d;
+});
+function endBdrag(e, cancelled){
+  if (!bdrag || (e && e.pointerId !== bdrag.pid)) return;
+  const d = bdrag; bdrag = null;
+  if (d.ghost) d.ghost.remove();
+  if (d.over) d.over.classList.remove("over");
+  try { d.el.releasePointerCapture(d.pid); } catch {}
+  if (!d.started) {
+    if (cancelled || bld.busy) return;
+    // tap: select, deselect, or place the selected tile onto this tile's slot
+    if (sameSrc(bld.sel, d.src)) { bld.sel = null; drawBuilder(); return; }
+    if (bld.sel && d.src.from === "slot" && bld.sel.kind === d.src.kind) { moveTile(bld.sel, { to: "slot", i: d.src.i }); return; }
+    if (bld.sel && d.src.from === "bank" && bld.sel.from === "slot" && bld.sel.kind === d.src.kind) { moveTile(bld.sel, { to: "bank" }); return; }
+    if (!bld.solved) { bld.sel = d.src; drawBuilder(); }
+    return;
+  }
+  d.el.classList.remove("lifted");
+  if (bld.busy) { setTimeout(() => { if (!bdrag && !bld.busy) drawBuilder(); }, 750); return; }
+  if (!cancelled && d.dest) moveTile(d.src, d.dest); else drawBuilder();
+}
+document.addEventListener("pointerup", e => endBdrag(e, false));
+document.addEventListener("pointercancel", e => endBdrag(e, true));
+// keyboard: Enter selects a tile; Enter on another slot tile or slot places it
+document.addEventListener("keydown", e => {
+  const tile = e.target.closest && e.target.closest("#builder .tile");
+  if (!tile || !(e.key === "Enter" || e.key === " ")) return;
+  e.preventDefault();
+  const src = srcOf(tile);
+  if (sameSrc(bld.sel, src)) { bld.sel = null; drawBuilder(); return; }
+  if (bld.sel && src.from === "slot" && bld.sel.kind === src.kind) { moveTile(bld.sel, { to: "slot", i: src.i }); return; }
+  if (bld.sel && bld.sel.from === "bank" && src.from === "bank") { bld.sel = src; drawBuilder(); return; }
+  if (!bld.solved) { bld.sel = src; drawBuilder(); }
+  const again = $("#builder .tile.sel"); if (again) again.focus();
+});
+document.addEventListener("keydown", e => {
+  const sl = e.target.closest && e.target.closest("#builder .slot:not(.filled)");
+  if (!sl || !(e.key === "Enter" || e.key === " ")) return;
+  e.preventDefault();
+  if (bld.sel && bld.sel.kind === sl.dataset.kind) moveTile(bld.sel, { to: "slot", i: Number(sl.dataset.i) });
+});
+async function bldDone(){
+  if (bld.solved || bld.busy) return;
+  if (bld.slots.some(s => !s.prefix && !s.suffix)) { await askConfirm("Add a prefix or a suffix to every root word first.", "OK", true); return; }
+  const claimed = new Set(), found = [];
+  const ok = bld.roots.every((g, i) => { const m = findMatch(i, claimed); found[i] = m; if (m && m !== true) claimed.add(m); return !!m; });
+  if (ok) {
+    bld.match = found;
+    bld.sel = null; drawBuilder();
+    await animateJoin(bld.roots.map((_, i) => i));
+    bld.solved = true; drawBuilder(); setStatus("Correct! Every word is built.", "win"); celebrate(); playWin(); return;
+  }
+  // wrong: keep every piece where it is and don't reveal which words are wrong
+  bld.tries++;
+  await askConfirm("Not quite. At least one word isn’t right yet. Change some pieces and press Done again.", "Keep trying", true);
+  drawBuilder(); setStatus(`Try #${bld.tries}`, "miss");
+}
+$("#btn-bcheck").onclick = () => {
+  if (!playingBuilder()) return;
+  bld.checkMode = bld.checkMode === "each" ? "all" : "each"; bld.ov.checkMode = bld.checkMode;
+  drawBuilder(); setStatus(bld.checkMode === "each" ? "Each word is checked as soon as it’s built." : "Press Done to check all the words.");
+};
+$("#btn-bdefs").onclick = () => {
+  if (!playingBuilder()) return;
+  // switch clues on or off for the words already on the board; nothing is reset
+  bld.defMode = bld.defMode === "after" ? "show" : "after"; bld.ov.defMode = bld.defMode;
+  bld.roots.forEach(g => {
+    if (!g.exact) return;
+    g.cands = bld.defMode === "after" ? ((bld.byRootAll && bld.byRootAll.get(g.root.toLowerCase())) || [g.orig || g]) : [g.orig || g];
+  });
+  drawBuilder();
+  setStatus(bld.defMode === "after" ? "Definitions are hidden until each word is checked." : "Definitions are shown as clues.");
+};
+$("#btn-border").onclick = () => {
+  const cur = playingBuilder(); if (!cur) return;
+  bld.wordOrder = bld.wordOrder === "list" ? "random" : "list"; bld.ov.wordOrder = bld.wordOrder;
+  bld.cursor = {};
+  loadBuilder(cur); drawBuilder();
+  setStatus(bld.wordOrder === "list" ? "Going through the list in order, starting from the top." : "Words are picked at random.");
+};
+$("#btn-newwords").onclick = () => { const cur = store.get(game.passageId); if (cur && cur.type === "builder") { loadBuilder(cur); drawBuilder(); setStatus(""); } };
+
+/* ---------- highlighting ---------- */
+function syncHlUi(){
+  $("#btn-seq").setAttribute("aria-pressed", String(autoSeq));
+  $("#btn-hl").setAttribute("aria-pressed", String(hlMode));
+  $("#hl-tools").hidden = !hlMode;
+  $("#board").classList.toggle("hl-mode", hlMode);
+  $("#board-hint").textContent = hlMode ? "Tap words to highlight them. Turn off Highlighter to move pieces." : "Drag the pieces to put the paragraph in order";
+  $$(".hl-sw").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.c === hlColor)));
+}
+$("#btn-seq").onclick = () => { autoSeq = !autoSeq; try { localStorage.setItem("seqboard.autoseq", autoSeq ? "1" : "0"); } catch {} syncHlUi(); drawZones(); };
+$("#btn-hl").onclick = () => { hlMode = !hlMode; syncHlUi(); };
+$$(".hl-sw").forEach(b => b.onclick = () => { hlColor = b.dataset.c; syncHlUi(); });
+$("#hl-clear").onclick = () => { game.hl = {}; drawZones(); };
+syncHlUi();
+
+/* ---------- download a standalone copy ---------- */
+$("#btn-download").onclick = async () => {
+  const html = buildPage(store.items);
+  const filename = "sequence-board.html";
+  let dl = null;
+  if (!store.local) { try { dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null; } catch { dl = null; } }
+  if (dl) {
+    try { await dl.save({ filename, data: new Blob([html], { type: "text/html" }) }); }
+    catch (e) { if (e && e.code !== "cancelled" && e.code !== "declined") toast("Download didn’t start. Try again."); }
+    return;
+  }
+  try {
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const a = document.createElement("a"); a.href = url; a.download = filename;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch { toast("Download isn’t available here."); }
+};
+
+/* ---------- boot ---------- */
+store.listeners.push(() => {
+  if (!$("#view-play").hidden) {
+    // only redraw headers; keep the student's work in progress
+    if (!game.passageId || !store.get(game.passageId)) renderPlay();
+    else renderPlay();
+  }
+  if (!$("#view-library").hidden) renderLibrary();
+});
+renderPieces();
+store.init();
+// after a save the page reloads; pick up where the teacher left off
+try {
+  const after = JSON.parse(sessionStorage.getItem("seqboard.after") || "null");
+  sessionStorage.removeItem("seqboard.after");
+  if (after) {
+    if (after.view === "play" && after.id && store.get(after.id)) { loadPassage(after.id); show("play"); }
+    else if (after.view === "library") show("library");
+    if (after.toast) toast(after.toast);
+  }
+} catch {}
+})();
+</script>
+</body>
+</html>
