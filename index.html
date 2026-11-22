@@ -580,7 +580,7 @@ const store = {
         saved.forEach(x => { const cur = map.get(x.id); if (!cur || (x.updatedAt || 0) > (cur.updatedAt || 0)) map.set(x.id, x); });
         this.items = [...map.values()];
       }
-      $("#store-note").textContent = "This is a downloaded copy. Passages you add or change are kept in this browser. Use Download app file to save them into a new copy you can move to another computer.";
+      $("#store-note").textContent = "Activities you add or change here are saved in this browser only. Use Download app file to save them into a copy you can move to another computer.";
       canEdit = true; this.emit(); applyRole();
       return;
     }
