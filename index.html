@@ -237,6 +237,20 @@ td .preview{color:var(--muted);font-size:15px;max-width:520px;white-space:nowrap
 .gen-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .gen-grid .wide{grid-column:1/-1}
 .gen-out{font-size:15px;color:var(--muted);min-height:1.4em;margin-top:10px}
+.ai-box{border:3px solid #111;border-radius:12px;padding:12px 14px;margin:0 0 16px;display:flex;flex-direction:column;gap:10px;background:var(--grey-soft)}
+.ai-box .field{color:var(--ink)}
+.ai-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.ai-row .field{flex:1 1 220px}
+.ai-link{font-weight:700;color:#C8102E;padding-bottom:10px}
+.checkline{display:flex;gap:8px;align-items:center;font-size:15px;font-weight:700;padding-bottom:10px}
+.checkline input{width:18px;height:18px;accent-color:#C8102E}
+.ai-note{font-size:14px;color:var(--muted);margin:0}
+.paste-box{border:3px dashed #C8102E;border-radius:12px;padding:12px 14px;margin-top:12px;display:flex;flex-direction:column;gap:10px}
+.paste-box textarea{width:100%;font-size:15px;padding:8px 10px;border-radius:8px;border:2px solid var(--line);background:var(--surface);color:var(--ink);resize:vertical}
+.paste-steps{margin:0;padding-left:1.2em;font-size:15px}
+.chat-links{display:flex;gap:6px;flex-wrap:wrap}
+.chat-links a{display:inline-block;padding:6px 12px;border:2px solid #111;border-radius:999px;font-weight:700;color:#111;background:#fff;text-decoration:none}
+.chat-links a:hover{background:#111;color:#fff}
 .err{color:var(--bad);font-weight:700}
 .modal-back{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:80;padding:20px}
 .modal{background:#fff;color:#111;border:4px solid #111;border-radius:16px;box-shadow:10px 10px 0 #111;padding:24px;max-width:480px;width:100%}
@@ -464,7 +478,24 @@ td .preview{color:var(--muted);font-size:15px;max-width:520px;white-space:nowrap
 
     <div class="panel" id="gen-panel">
       <h3>Auto-generate</h3>
-      <p class="sub" id="gen-sub">Claude writes a passage and splits it into pieces. It loads into the editor so you can review it before saving.</p>
+      <div class="ai-box" id="ai-box">
+        <label class="field">AI service<select id="ai-service"></select></label>
+        <div class="ai-row" id="ai-base-wrap" hidden>
+          <label class="field">Server address<input id="ai-base" placeholder="http://localhost:11434/v1" spellcheck="false"></label>
+        </div>
+        <div class="ai-row" id="ai-key-wrap" hidden>
+          <label class="field">API key<input id="ai-key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key"></label>
+          <a class="ai-link" id="ai-key-link" target="_blank" rel="noopener">Get a key</a>
+          <label class="checkline"><input type="checkbox" id="ai-remember"> Remember on this computer</label>
+        </div>
+        <div class="ai-row" id="ai-model-wrap" hidden>
+          <label class="field">Model<input id="ai-model" list="ai-models" spellcheck="false" placeholder="Leave blank to pick one automatically"></label>
+          <datalist id="ai-models"></datalist>
+          <button class="btn quiet" id="ai-load" type="button">Load models</button>
+        </div>
+        <p class="ai-note" id="ai-note"></p>
+      </div>
+      <p class="sub" id="gen-sub">The AI writes a passage and splits it into pieces. It loads into the editor so you can review it before saving.</p>
       <div class="gen-grid">
         <label class="field">Grade level<select id="g-grade"></select></label>
         <label class="field">Skill<select id="g-skill"></select></label>
@@ -492,6 +523,24 @@ td .preview{color:var(--muted);font-size:15px;max-width:520px;white-space:nowrap
         <button class="btn quiet" id="btn-gen-stop" hidden>Stop</button>
       </div>
       <div class="gen-out" id="gen-out"></div>
+      <div class="paste-box" id="paste-box" hidden>
+        <ol class="paste-steps">
+          <li>Copy the request and open a chatbot below. Some fill in the request for you; if not, paste it (Ctrl+V) and send.</li>
+          <li>Copy the chatbot’s whole answer.</li>
+          <li>Paste it in the box at the bottom and press <b>Use this answer</b>.</li>
+        </ol>
+        <label class="field">Request for the chatbot<textarea id="paste-prompt" rows="5" readonly></textarea></label>
+        <div class="hstack">
+          <button class="btn" id="paste-copy" type="button">Copy request</button>
+          <div class="chat-links" id="chat-links"></div>
+        </div>
+        <label class="field">Chatbot’s answer<textarea id="paste-answer" rows="5" placeholder="Paste the answer here"></textarea></label>
+        <div class="hstack">
+          <button class="btn primary" id="paste-use" type="button">Use this answer</button>
+          <button class="btn quiet" id="paste-cancel" type="button">Cancel</button>
+          <span class="err" id="paste-err"></span>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1231,11 +1280,11 @@ function setEdType(t, skillWanted){
   $("#g-size-wrap").hidden = b;
   $("#g-count-label").textContent = fam ? "Number of words in the family" : b ? "Number of root words" : "Number of pieces";
   $("#gen-sub").textContent = b
-    ? (fam ? "Claude picks a root word and builds a family of words from it with definitions. It loads into the word list so you can review it before saving."
-           : "Claude makes a list of root words with prefixes and suffixes that fit them. It loads into the word list so you can review it before saving.")
-    : "Claude writes a passage and splits it into pieces. It loads into the editor so you can review it before saving.";
+    ? (fam ? "The AI picks a root word and builds a family of words from it with definitions. It loads into the word list so you can review it before saving."
+           : "The AI makes a list of root words with prefixes and suffixes that fit them. It loads into the word list so you can review it before saving.")
+    : "The AI writes a passage and splits it into pieces. It loads into the editor so you can review it before saving.";
   $("#g-affix-wrap").hidden = !b;
-  $("#g-topic-label").textContent = fam ? "Root word (leave blank to let Claude pick)" : "Topic (optional)";
+  $("#g-topic-label").textContent = fam ? "Root word (leave blank to let the AI pick)" : "Topic (optional)";
   $("#g-topic").placeholder = fam ? "e.g. play, help, kind, view" : b ? "e.g. feelings, sports, science words" : "e.g. a trip to the aquarium, the water cycle";
   if (b) {
     $("#g-count").innerHTML = fam ? "<option>4</option><option>5</option><option selected>6</option><option>8</option>" : "<option>6</option><option selected>8</option><option>10</option><option>12</option><option>16</option><option>20</option>";
@@ -1397,15 +1446,285 @@ $("#btn-save-play").onclick = async () => {
   if (id) { loadPassage(id); show("play"); }
 };
 
-/* ---------- AUTO-GENERATE ---------- */
+/* ---------- AUTO-GENERATE: choice of AI service ---------- */
 let sampleFn = null, genCtl = null;
-(async () => {
-  try { sampleFn = window.claude && window.claude.use ? await window.claude.use("sample") : null; } catch { sampleFn = null; }
-  if (!sampleFn) {
-    $("#btn-gen").disabled = true;
-    $("#gen-out").textContent = "Auto-generate works when this page is opened in Claude. You can still paste from a spreadsheet.";
+const inClaude = !!(window.claude && window.claude.use);
+const CHAT_SITES = [
+  ["ChatGPT", q => "https://chatgpt.com/?q=" + encodeURIComponent(q)],
+  ["Gemini", () => "https://gemini.google.com/app"],
+  ["Grok", q => "https://grok.com/?q=" + encodeURIComponent(q)],
+  ["Claude", q => "https://claude.ai/new?q=" + encodeURIComponent(q)],
+  ["Copilot", q => "https://copilot.microsoft.com/?q=" + encodeURIComponent(q)]
+];
+const NOT_CHAT = /embed|whisper|tts|dall-e|image|audio|realtime|moderation|transcri|rerank|guard|search|codex|deep-research|computer-use|robotics|native-audio|-live|aqa|veo|imagen|lyria|sora/i;
+const AI_SERVICES = {
+  builtin:    { name: "Claude (built in)", label: "Claude, built in (no setup)", kind: "builtin",
+                note: "Uses your Claude account. Works when this page is opened in Claude." },
+  paste:      { name: "copy and paste", label: "Any free chatbot: copy and paste (ChatGPT, Gemini, Grok, Claude, Copilot)", kind: "paste",
+                note: "Free, no API key. You copy a request into the chatbot’s website and paste its answer back here." },
+  gemini:     { name: "Gemini", label: "Gemini by Google: free API key", kind: "gemini", key: "https://aistudio.google.com/apikey",
+                prefer: [/^gemini-[\d.]+-flash$/, /flash/, /pro/],
+                note: "Get a free API key from Google AI Studio. The free tier has daily limits." },
+  groq:       { name: "Groq", label: "Groq: free API key (Llama and other open models)", kind: "openai", base: "https://api.groq.com/openai/v1", key: "https://console.groq.com/keys",
+                prefer: [/70b|120b/, /llama|gpt-oss|qwen/],
+                note: "Get a free API key from Groq. The free tier has usage limits." },
+  openrouter: { name: "OpenRouter", label: "OpenRouter: many models, including free ones", kind: "openai", base: "https://openrouter.ai/api/v1", key: "https://openrouter.ai/keys", publicModels: true,
+                prefer: [/:free$/],
+                note: "One key for models from OpenAI, Google, Meta and more. Models ending in “:free” cost nothing." },
+  anthropic:  { name: "Claude API", label: "Claude by Anthropic: API key", kind: "anthropic", key: "https://console.anthropic.com/settings/keys", model: "claude-haiku-5-5",
+                prefer: [/haiku/, /sonnet/],
+                note: "Paid per use with an Anthropic API key." },
+  openai:     { name: "OpenAI", label: "ChatGPT by OpenAI: API key", kind: "openai-responses", base: "https://api.openai.com/v1", key: "https://platform.openai.com/api-keys",
+                prefer: [/mini|luna|nano/],
+                note: "Paid per use with an OpenAI API key. OpenAI sometimes blocks requests from web pages; if it won’t connect, use copy and paste with ChatGPT, or OpenRouter with an OpenAI model." },
+  xai:        { name: "Grok", label: "Grok by xAI: API key", kind: "openai", base: "https://api.x.ai/v1", key: "https://console.x.ai",
+                prefer: [/fast|mini/, /grok/],
+                note: "Paid per use with an xAI API key." },
+  mistral:    { name: "Mistral", label: "Mistral: API key", kind: "openai", base: "https://api.mistral.ai/v1", key: "https://console.mistral.ai/api-keys",
+                prefer: [/small-latest/, /small/, /medium/] , note: "Uses a Mistral API key." },
+  deepseek:   { name: "DeepSeek", label: "DeepSeek: API key", kind: "openai", base: "https://api.deepseek.com", key: "https://platform.deepseek.com/api_keys",
+                prefer: [/deepseek-chat/], note: "Paid per use with a DeepSeek API key." },
+  custom:     { name: "your server", label: "Custom or local AI (Ollama, LM Studio, any OpenAI-compatible server)", kind: "openai", custom: true, optionalKey: true,
+                note: "Enter the server address. For Ollama on this computer use http://localhost:11434/v1 and allow web pages with the OLLAMA_ORIGINS setting. LM Studio needs “Enable CORS” turned on." }
+};
+const AI_KEY = "seqboard.ai.v1";
+let aiCfg = { service: "", models: {}, keys: {}, base: "", remember: {} };
+try { aiCfg = { ...aiCfg, ...JSON.parse(localStorage.getItem(AI_KEY) || "{}") }; } catch {}
+const sessionKeys = {};
+function saveAiCfg(){
+  const keep = {};
+  Object.keys(aiCfg.remember || {}).forEach(k => { if (aiCfg.remember[k] && sessionKeys[k]) keep[k] = sessionKeys[k]; });
+  try { localStorage.setItem(AI_KEY, JSON.stringify({ ...aiCfg, keys: keep })); } catch {}
+}
+Object.assign(sessionKeys, aiCfg.keys || {});
+const svc = () => AI_SERVICES[aiCfg.service] || AI_SERVICES.paste;
+const svcBase = s => (s.custom ? (aiCfg.base || "").trim().replace(/\/+$/, "") : s.base);
+
+function renderAiUi(){
+  const sel = $("#ai-service");
+  sel.textContent = "";
+  Object.entries(AI_SERVICES).forEach(([id, s]) => {
+    if (id === "builtin" && !sampleFn) return;
+    const o = document.createElement("option"); o.value = id; o.textContent = s.label; sel.append(o);
+  });
+  // the person's own choice wins; otherwise built-in Claude when available, else copy and paste
+  let cur = aiCfg.chosen && AI_SERVICES[aiCfg.service] ? aiCfg.service : (sampleFn ? "builtin" : "paste");
+  if (cur === "builtin" && !sampleFn) cur = "paste";
+  aiCfg.service = cur;
+  sel.value = cur;
+  syncAiFields();
+}
+function syncAiFields(){
+  const id = aiCfg.service, s = svc();
+  const usesKey = !["builtin", "paste"].includes(id);
+  $("#ai-key-wrap").hidden = !usesKey;
+  $("#ai-model-wrap").hidden = !usesKey;
+  $("#ai-base-wrap").hidden = !s.custom;
+  $("#ai-base").value = aiCfg.base || "";
+  $("#ai-key").value = sessionKeys[id] || "";
+  $("#ai-key").placeholder = s.optionalKey ? "Optional for local servers" : "Paste your key";
+  $("#ai-remember").checked = !!(aiCfg.remember && aiCfg.remember[id]);
+  const link = $("#ai-key-link"); link.hidden = !s.key; if (s.key) link.href = s.key;
+  $("#ai-model").value = (aiCfg.models && aiCfg.models[id]) || "";
+  $("#ai-models").textContent = "";
+  let note = s.note || "";
+  if (usesKey) note += ` Your key stays in this browser and is only sent to ${s.name}.`;
+  if (usesKey && inClaude) note += " Inside Claude, outside services may be blocked; if it won’t connect, use Claude (built in) here or open the public page.";
+  $("#ai-note").textContent = note;
+}
+$("#ai-service").addEventListener("change", e => { aiCfg.service = e.target.value; aiCfg.chosen = true; saveAiCfg(); syncAiFields(); $("#gen-out").textContent = ""; });
+$("#ai-key").addEventListener("input", e => { sessionKeys[aiCfg.service] = e.target.value.trim(); saveAiCfg(); });
+$("#ai-remember").addEventListener("change", e => { aiCfg.remember = { ...(aiCfg.remember || {}), [aiCfg.service]: e.target.checked }; saveAiCfg(); });
+$("#ai-model").addEventListener("change", e => { aiCfg.models = { ...(aiCfg.models || {}), [aiCfg.service]: e.target.value.trim() }; saveAiCfg(); });
+$("#ai-base").addEventListener("change", e => { aiCfg.base = e.target.value.trim(); saveAiCfg(); });
+$("#ai-load").addEventListener("click", async () => {
+  const out = $("#gen-out"); out.className = "gen-out"; out.textContent = "Loading models…";
+  try {
+    const ids = await listModels();
+    const dl = $("#ai-models"); dl.textContent = "";
+    ids.forEach(id => { const o = document.createElement("option"); o.value = id; dl.append(o); });
+    if (!$("#ai-model").value || !ids.includes($("#ai-model").value)) {
+      const pick = pickModel(ids); $("#ai-model").value = pick;
+      aiCfg.models = { ...(aiCfg.models || {}), [aiCfg.service]: pick }; saveAiCfg();
+    }
+    out.textContent = `Connected. ${ids.length} models available; using ${$("#ai-model").value}. Click the Model box to choose another.`;
+  } catch (e) { out.className = "gen-out err"; out.textContent = aiErrorText(e) || "Couldn’t load the model list."; }
+});
+
+// ---- talking to each service ----
+async function httpJson(url, opts, signal){
+  let r;
+  try { r = await fetch(url, { ...opts, signal }); }
+  catch (e) { if (signal && signal.aborted) throw { code: "cancelled" }; throw { code: "network" }; }
+  let data = null, text = "";
+  try { text = await r.text(); data = JSON.parse(text); } catch {}
+  if (!r.ok) {
+    const msg = ((data && (data.error && (data.error.message || data.error)) || data && (data.message || data.detail)) || text || "").toString();
+    const st = r.status;
+    let code = "http";
+    if (st === 401 || st === 403 || /api key|api_key|x-api-key|unauthor|authenticat/i.test(msg) && st < 500) code = "key";
+    if (st === 404 || /model.*(not found|does not exist|not exist|unknown|invalid)|no such model|not a valid model/i.test(msg)) code = "model";
+    if (st === 429 || /quota|rate limit|resource_exhausted/i.test(msg)) code = "rate";
+    if (st === 402 || /credit|insufficient|billing|balance/i.test(msg) && code !== "key") code = "credits";
+    throw { code, status: st, detail: msg.slice(0, 200) };
   }
+  return data;
+}
+function needKey(s, id){
+  const k = sessionKeys[id] || "";
+  if (!k && !s.optionalKey) throw { code: "nokey" };
+  return k;
+}
+async function listModels(signal){
+  const id = aiCfg.service, s = svc();
+  if (s.custom && !svcBase(s)) throw { code: "nobase" };
+  if (s.kind === "gemini") {
+    const d = await httpJson("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", { headers: { "x-goog-api-key": needKey(s, id) } }, signal);
+    return (d.models || []).filter(m => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map(m => String(m.name || "").replace(/^models\//, "")).filter(n => /gemini|gemma/.test(n) && !NOT_CHAT.test(n));
+  }
+  if (s.kind === "anthropic") {
+    const d = await httpJson("https://api.anthropic.com/v1/models?limit=100", { headers: anthHeaders(needKey(s, id)) }, signal);
+    return (d.data || []).map(m => m.id);
+  }
+  const headers = {};
+  const k = s.publicModels ? sessionKeys[id] : needKey(s, id);
+  if (k) headers.Authorization = "Bearer " + k;
+  const d = await httpJson(svcBase(s) + "/models", { headers }, signal);
+  let list = (d.data || d.models || []).map(m => typeof m === "string" ? m : m.id || m.name).filter(Boolean).filter(n => !NOT_CHAT.test(n));
+  if (id === "openrouter") list.sort((a, b) => (b.endsWith(":free") - a.endsWith(":free")));
+  return list;
+}
+function pickModel(ids){
+  const s = svc();
+  for (const re of (s.prefer || [])) { const hit = ids.find(x => re.test(x)); if (hit) return hit; }
+  return ids[0] || s.model || "";
+}
+async function ensureModel(signal){
+  const id = aiCfg.service, s = svc();
+  let m = (aiCfg.models && aiCfg.models[id]) || "";
+  if (m) return m;
+  if (s.model) return s.model;
+  const ids = await listModels(signal);
+  m = pickModel(ids);
+  if (!m) throw { code: "model" };
+  aiCfg.models = { ...(aiCfg.models || {}), [id]: m }; saveAiCfg();
+  if (!$("#ai-model-wrap").hidden) $("#ai-model").value = m;
+  return m;
+}
+const anthHeaders = k => ({ "x-api-key": k, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true", "content-type": "application/json" });
+
+// read a JSON value out of a chatbot reply, even with words or code fences around it
+function parseLooseJson(text){
+  const t = String(text || "").trim();
+  const tries = [t];
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i); if (fence) tries.push(fence[1]);
+  const a = t.indexOf("{"), b = t.lastIndexOf("}"); if (a >= 0 && b > a) tries.push(t.slice(a, b + 1));
+  const c = t.indexOf("["), d = t.lastIndexOf("]"); if (c >= 0 && d > c) tries.push(t.slice(c, d + 1));
+  for (const x of tries) { try { return JSON.parse(x.replace(/[\u201c\u201d]/g, '"')); } catch {} try { return JSON.parse(x); } catch {} }
+  throw { code: "shape" };
+}
+
+// one entry point for every generator: send the request, get parsed JSON back
+async function aiJson(prompt, signal){
+  const id = aiCfg.service, s = svc();
+  if (s.kind === "builtin") {
+    if (!sampleFn) throw { code: "nobuiltin" };
+    return sampleFn.json(prompt, { signal, cache: false });
+  }
+  if (s.kind === "paste") return pasteFlow(prompt, signal);
+  if (s.custom && !svcBase(s)) throw { code: "nobase" };
+  const key = needKey(s, id);
+  const model = await ensureModel(signal);
+  let text = "";
+  if (s.kind === "gemini") {
+    const d = await httpJson(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json" } })
+    }, signal);
+    text = ((d.candidates || [])[0]?.content?.parts || []).map(p => p.text || "").join("");
+  } else if (s.kind === "anthropic") {
+    const d = await httpJson("https://api.anthropic.com/v1/messages", {
+      method: "POST", headers: anthHeaders(key),
+      body: JSON.stringify({ model, max_tokens: 4096, messages: [{ role: "user", content: prompt }] })
+    }, signal);
+    text = (d.content || []).map(c => c.text || "").join("");
+  } else if (s.kind === "openai-responses") {
+    const d = await httpJson(svcBase(s) + "/responses", {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key },
+      body: JSON.stringify({ model, input: prompt })
+    }, signal);
+    text = d.output_text || (d.output || []).flatMap(o => o.content || []).map(c => c.text || "").join("");
+  } else {
+    const headers = { "Content-Type": "application/json" };
+    if (key) headers.Authorization = "Bearer " + key;
+    const d = await httpJson(svcBase(s) + "/chat/completions", {
+      method: "POST", headers, body: JSON.stringify({ model, messages: [{ role: "user", content: prompt }] })
+    }, signal);
+    const msg = (d.choices || [])[0]?.message?.content;
+    text = Array.isArray(msg) ? msg.map(p => p.text || "").join("") : (msg || "");
+  }
+  if (!text.trim()) throw { code: "empty" };
+  return parseLooseJson(text);
+}
+
+// copy-and-paste with any chatbot website
+function copyText(t){
+  try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(() => true, () => false); } catch {}
+  return Promise.resolve(false);
+}
+function pasteFlow(prompt, signal){
+  return new Promise((resolve, reject) => {
+    const box = $("#paste-box"), err = $("#paste-err");
+    box.hidden = false; err.textContent = ""; $("#paste-answer").value = "";
+    $("#paste-prompt").value = prompt;
+    $("#gen-out").textContent = "Follow the steps below.";
+    const links = $("#chat-links"); links.textContent = "";
+    CHAT_SITES.forEach(([name, url]) => {
+      const a = document.createElement("a"); a.textContent = "Open " + name; a.href = url(prompt); a.target = "_blank"; a.rel = "noopener";
+      a.addEventListener("click", () => { copyText(prompt); });
+      links.append(a);
+    });
+    const finish = () => { box.hidden = true; $("#paste-use").onclick = $("#paste-cancel").onclick = $("#paste-copy").onclick = null; if (signal) signal.removeEventListener("abort", onAbort); };
+    const onAbort = () => { finish(); reject({ code: "cancelled" }); };
+    if (signal) signal.addEventListener("abort", onAbort);
+    $("#paste-copy").onclick = async () => {
+      const ok = await copyText(prompt);
+      if (!ok) { const ta = $("#paste-prompt"); ta.focus(); ta.select(); try { document.execCommand("copy"); } catch {} }
+      $("#paste-copy").textContent = "Copied"; setTimeout(() => $("#paste-copy").textContent = "Copy request", 1500);
+    };
+    $("#paste-cancel").onclick = () => { finish(); reject({ code: "cancelled" }); };
+    $("#paste-use").onclick = () => {
+      try { const data = parseLooseJson($("#paste-answer").value); finish(); resolve(data); }
+      catch { err.textContent = "That doesn’t look like the full answer. Copy the chatbot’s whole reply, including the { } parts."; }
+    };
+    $("#paste-prompt").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
+
+// friendly messages for connection problems (null = let the generator explain)
+function aiErrorText(e){
+  const code = e && e.code, s = svc(), name = s.name;
+  switch (code) {
+    case "network": return `Couldn’t reach ${name}. It may block requests from this page, or you’re offline. Try again, or choose another AI service${inClaude ? " (inside Claude, use Claude built in)" : ""}.`;
+    case "key": return `${name} didn’t accept the API key. Check the key and try again.`;
+    case "nokey": return `Enter your ${name} API key first. Use “Get a key” if you don’t have one.`;
+    case "nobase": return "Enter the server address first, for example http://localhost:11434/v1.";
+    case "model": return `${name} doesn’t have that model. Press Load models and pick one.`;
+    case "rate": return `${name} says you’ve reached a usage limit. Wait a minute and try again, or choose another service.`;
+    case "credits": return `Your ${name} account needs credits for this model. Pick a free model or add credits.`;
+    case "empty": return `${name} sent back an empty answer. Try again or choose another model.`;
+    case "nobuiltin": return "Claude (built in) only works when this page is opened in Claude. Choose another AI service.";
+    case "http": return `${name} returned an error${e.status ? " (" + e.status + ")" : ""}${e.detail ? ": " + e.detail : ""}.`;
+    default: return null;
+  }
+}
+
+(async () => {
+  try { sampleFn = inClaude ? await window.claude.use("sample") : null; } catch { sampleFn = null; }
+  renderAiUi();
 })();
+renderAiUi();
 // sync generator defaults from the editor's details
 $("#ed-grade").addEventListener("change", e => { if (e.target.value) $("#g-grade").value = e.target.value; });
 $("#ed-skill").addEventListener("change", e => { const gs = $("#g-skill"); if ([...gs.options].some(o => o.value === e.target.value)) gs.value = e.target.value; });
@@ -1445,7 +1764,7 @@ Reply with only JSON in this shape:
   $("#btn-gen").disabled = true; $("#btn-gen-stop").hidden = false;
   const out = $("#gen-out"); out.className = "gen-out"; out.textContent = "Making a word list… this can take up to a minute.";
   try {
-    const data = await sampleFn.json(prompt, { signal: genCtl.signal, cache: false });
+    const data = await aiJson(prompt, genCtl.signal);
     const list = Array.isArray(data && data.rows) ? data.rows : [];
     const rows = list.map(r => ({
       prefix: affix === "suffix" ? "" : (Array.isArray(r.prefixes) ? r.prefixes : []).map(x => String(x).replace(/-/g, "").trim()).filter(Boolean).join(", "),
@@ -1462,12 +1781,12 @@ Reply with only JSON in this shape:
   } catch (e) {
     const code = e && e.code;
     out.className = code === "cancelled" ? "gen-out" : "gen-out err";
-    out.textContent = code === "cancelled" ? "Stopped." :
+    out.textContent = aiErrorText(e) || (code === "cancelled" ? "Stopped." :
       code === "not_granted" ? "Auto-generate needs your permission. Click Generate again to allow it." :
       code === "rate_limited" ? "Too many requests right now. Wait a minute and try again." :
-      "The word list didn’t come back in a usable form. Try again or change the settings." + (code && code !== "shape" ? ` (error: ${code})` : "");
+      "The word list didn’t come back in a usable form. Try again or change the settings." + (code && code !== "shape" ? ` (error: ${code})` : ""));
   } finally {
-    $("#btn-gen").disabled = !sampleFn; $("#btn-gen-stop").hidden = true; genCtl = null;
+    $("#btn-gen").disabled = false; $("#btn-gen-stop").hidden = true; genCtl = null;
   }
 }
 async function genDefs(grade, topic, n, family, affix){
@@ -1496,7 +1815,7 @@ Reply with only JSON in this shape:
   $("#btn-gen").disabled = true; $("#btn-gen-stop").hidden = false;
   const out = $("#gen-out"); out.className = "gen-out"; out.textContent = "Making words and definitions… this can take up to a minute.";
   try {
-    const data = await sampleFn.json(prompt, { signal: genCtl.signal, cache: false });
+    const data = await aiJson(prompt, genCtl.signal);
     const list = Array.isArray(data && data.rows) ? data.rows : [];
     const clean = x => String(x == null ? "" : x).replace(/-/g, "").trim();
     let rows = list.map(r => ({ prefix: clean(r.prefix), root: root || String(r.root || "").trim(), suffix: clean(r.suffix), def: String(r.definition || r.def || "").trim() }))
@@ -1513,16 +1832,15 @@ Reply with only JSON in this shape:
   } catch (e) {
     const code = e && e.code;
     out.className = code === "cancelled" ? "gen-out" : "gen-out err";
-    out.textContent = code === "cancelled" ? "Stopped." :
+    out.textContent = aiErrorText(e) || (code === "cancelled" ? "Stopped." :
       code === "not_granted" ? "Auto-generate needs your permission. Click Generate again to allow it." :
       code === "rate_limited" ? "Too many requests right now. Wait a minute and try again." :
-      (family && root ? `Couldn’t make enough ${affix === "prefix" ? "prefix " : affix === "suffix" ? "suffix " : ""}words from “${root}”. Try again, or pick a different root word or option.` : "The words didn’t come back in a usable form. Try again or change the settings.") + (code && code !== "shape" ? ` (error: ${code})` : "");
+      (family && root ? `Couldn’t make enough ${affix === "prefix" ? "prefix " : affix === "suffix" ? "suffix " : ""}words from “${root}”. Try again, or pick a different root word or option.` : "The words didn’t come back in a usable form. Try again or change the settings.") + (code && code !== "shape" ? ` (error: ${code})` : ""));
   } finally {
-    $("#btn-gen").disabled = !sampleFn; $("#btn-gen-stop").hidden = true; genCtl = null;
+    $("#btn-gen").disabled = false; $("#btn-gen-stop").hidden = true; genCtl = null;
   }
 }
 $("#btn-gen").onclick = async () => {
-  if (!sampleFn) return;
   if (ed.type === "builder" || ed.type === "family") return genBuilder();
   const grade = $("#g-grade").value, skill = $("#g-skill").value, topic = $("#g-topic").value.trim();
   const n = Number($("#g-count").value), size = $("#g-size").value;
@@ -1546,7 +1864,7 @@ Reply with only JSON in this shape:
   $("#btn-gen").disabled = true; $("#btn-gen-stop").hidden = false;
   const out = $("#gen-out"); out.className = "gen-out"; out.textContent = "Writing a passage… this can take up to a minute.";
   try {
-    const data = await sampleFn.json(prompt, { signal: genCtl.signal, cache: false });
+    const data = await aiJson(prompt, genCtl.signal);
     const pieces = Array.isArray(data && data.pieces) ? data.pieces.map(s => String(s).trim()).filter(Boolean) : [];
     if (pieces.length < 2) throw { code: "shape" };
     if (ed.pieces.some(p => p.trim()) && !(await askConfirm("Replace the current pieces with the generated passage?", "Replace"))) { out.textContent = "Kept your current pieces."; return; }
@@ -1559,13 +1877,13 @@ Reply with only JSON in this shape:
   } catch (e) {
     const code = e && e.code;
     out.className = "gen-out err";
-    out.textContent = code === "cancelled" ? "Stopped." :
+    out.textContent = aiErrorText(e) || (code === "cancelled" ? "Stopped." :
       code === "not_granted" ? "Auto-generate needs your permission. Click Generate again to allow it." :
       code === "rate_limited" ? "Too many requests right now. Wait a minute and try again." :
-      "The passage didn’t come back in a usable form. Try again or change the settings." + (code && code !== "shape" ? ` (error: ${code})` : "");
+      "The passage didn’t come back in a usable form. Try again or change the settings." + (code && code !== "shape" ? ` (error: ${code})` : ""));
     if (code === "cancelled") out.className = "gen-out";
   } finally {
-    $("#btn-gen").disabled = !sampleFn; $("#btn-gen-stop").hidden = true; genCtl = null;
+    $("#btn-gen").disabled = false; $("#btn-gen-stop").hidden = true; genCtl = null;
   }
 };
 $("#btn-gen-stop").onclick = () => genCtl && genCtl.abort();
